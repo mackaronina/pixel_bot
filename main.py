@@ -207,15 +207,15 @@ def get_difference():
                     pxls[y, x] = (show_diff[x][y][0], show_diff[x][y][1], show_diff[x][y][2], 255)
             except (IndexError, KeyError, AttributeError):
                 pass
-    img2.save("difference.png")
-    return (total_size - diff) / total_size, diff
+    #img2.save("difference.png")
+    return (total_size - diff) / total_size, diff, send_pil(img2)
 
 
 def send_pil(im):
     bio = BytesIO()
-    bio.name = 'result.png'
     im.save(bio, 'PNG')
-    bio.seek(0)
+    bio.name = 'result.png'
+    bio.seek(0, 0)
     return bio
 
 
@@ -270,13 +270,13 @@ def updater():
 
 
 def job_hours():
-    perc, diff = get_difference()
+    perc, diff, img = get_difference()
     bot.send_message(ME, 'abba2')
-    with open("difference.png", 'rb') as img:
-        m = bot.send_document(SERVICE_CHATID, img)
-        fil = m.document.file_id
-        text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
-        for chatid in db:
+    #with open("difference.png", 'rb') as img:
+    m = bot.send_document(SERVICE_CHATID, img)
+    fil = m.document.file_id
+    text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+    for chatid in db:
             try:
                 bot.send_message(chatid, text)
                 bot.send_document(chatid, fil, caption="На картинці всі пікселі не за шаблоном")
