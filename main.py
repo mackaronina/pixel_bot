@@ -290,7 +290,7 @@ def init_db():
 if __name__ == '__main__':
     init_db()
     bot.send_message(ME, "ok")
-    schedule.every(3).hours.do(job_hours).run()
+    schedule.every(3).hours.do(job_hours)
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
