@@ -259,7 +259,7 @@ def job_minutes():
     global is_void
     r = requests.get(f'{PPFUN_URL}/void', impersonate='chrome110')
     if r.status_code == 200:
-        if r.text == "Time until next void: 0 hours, 0 minutes, 0 seconds":
+        if "Time until next void: 0 hours, 0 minutes, 0 seconds" in r.text:
             if not is_void:
                 is_void = True
                 perc, diff = get_difference()
