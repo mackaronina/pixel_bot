@@ -271,6 +271,7 @@ def updater():
 
 def job_hours():
     perc, diff = get_difference()
+    bot.send_message(ME, 'abba2')
     with open("difference.png", 'rb') as img:
         m = bot.send_document(SERVICE_CHATID, img)
         fil = m.document.file_id
