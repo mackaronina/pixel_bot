@@ -17,7 +17,7 @@ from telebot import apihelper
 ME = 7258570440
 SERVICE_CHATID = -1002171923232
 token = os.environ['BOT_TOKEN']
-APP_URL = f'{os.environ['URL']}/{token}'
+APP_URL = f'https://pixel-bot-5lns.onrender.com/{token}'
 PPFUN_URL = "https://pixmap.fun"
 COLORS = [
     (202, 227, 255),
