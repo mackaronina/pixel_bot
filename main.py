@@ -230,7 +230,9 @@ def handle_text(message, txt):
         db.append(message.chat.id)
         cursor.execute(f'INSERT INTO ukr_chats (id) VALUES ({message.chat.id})')
 
-
+@bot.message_handler(commands=["testo"])
+def msg_testo(message):
+    job_hours()
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
     if message.chat.id == SERVICE_CHATID and message.photo is not None:
