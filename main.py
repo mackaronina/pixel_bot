@@ -83,7 +83,7 @@ class Matrix:
         self.start_y = None
         self.width = None
         self.height = None
-        self.matrix = {}
+        self.matrix = None
 
     def add_coords(self, x, y, w, h):
         if self.start_x is None or self.start_x > x:
@@ -100,24 +100,14 @@ class Matrix:
             end_y_b = self.start_y + self.height
             self.width = max(end_x_b, end_x_a) - self.start_x
             self.height = max(end_y_b, end_y_a) - self.start_y
+        self.matrix = np.zeros((self.height, self.width, 4), dtype='uint8')
 
     def create_image(self):
-        img = PIL.Image.new('RGBA', (self.width, self.height), (255, 0, 0, 0))
-        pxls = img.load()
-        for x in range(self.width):
-            for y in range(self.height):
-                try:
-                    color = self.matrix[x + self.start_x][y + self.start_y]
-                    pxls[x, y] = COLORS[color]
-                except (IndexError, KeyError, AttributeError):
-                    pass
-        return img
+        return self.matrix
 
     def set_pixel(self, x, y, color):
         if self.start_x <= x < (self.start_x + self.width) and self.start_y <= y < (self.start_y + self.height):
-            if x not in self.matrix:
-                self.matrix[x] = {}
-            self.matrix[x][y] = color
+            self.matrix[y - self.start_y][x - self.start_x] = [color[0], color[1], color[2], 255]
 
 
 def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
@@ -134,7 +124,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
                 for i in range(256 * 256):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
-                    target_matrix.set_pixel(tx, ty, 0)
+                    target_matrix.set_pixel(tx, ty, COLORS[0])
             else:
                 i = 0
                 for b in data:
@@ -143,7 +133,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
                     bcl = b & 0x7F
 
                     if 0 <= bcl <= 31:
-                        target_matrix.set_pixel(tx, ty, bcl)
+                        target_matrix.set_pixel(tx, ty, COLORS[bcl])
                     i += 1
             break
         except Exception as e:
@@ -171,7 +161,7 @@ def get_area(canvas_id, canvas_size, x, y, w, h):
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
                 fetch(s, canvas_id, canvasoffset, ix, iy, target_matrix)
-        return target_matrix
+        return target_matrix.create_image()
 
 
 def convert_color(color):
@@ -188,9 +178,8 @@ def get_difference():
     shablon_y = -13294
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
-    matrix = get_area(0, 65536, shablon_x, shablon_y, shablon_w, shablon_h)
+    img1 = get_area(0, 65536, shablon_x, shablon_y, shablon_w, shablon_h)
     bot.send_message(ME, 'test4')
-    img1 = np.array(matrix.create_image(), dtype='int16')
     total_size = shablon_w * shablon_h
     diff = 0
     for x in range(shablon_h):
