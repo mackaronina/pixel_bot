@@ -148,7 +148,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
                     i += 1
             break
         except Exception as e:
-            print(e)
+            bot.send_message(ME, str(e))
             if attempts > 3:
                 print(f"Could not get {url} in three tries, cancelling")
                 raise
