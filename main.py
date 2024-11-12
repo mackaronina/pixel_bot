@@ -208,7 +208,7 @@ def get_difference():
             except (IndexError, KeyError, AttributeError):
                 pass
     del show_diff
-    return (total_size - diff) / total_size, diff, img2
+    return (total_size - diff) / total_size, diff, send_pil(img2)
 
 
 def send_pil(im):
@@ -271,7 +271,7 @@ def updater():
 
 def job_hours():
     perc, diff, img = get_difference()
-    m = bot.send_document(SERVICE_CHATID, send_pil(img))
+    m = bot.send_document(SERVICE_CHATID, img)
     fil = m.document.file_id
     text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
     for chatid in db:
