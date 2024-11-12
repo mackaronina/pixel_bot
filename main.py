@@ -207,7 +207,6 @@ def get_difference():
                     pxls[y, x] = (show_diff[x][y][0], show_diff[x][y][1], show_diff[x][y][2], 255)
             except (IndexError, KeyError, AttributeError):
                 pass
-    del show_diff
     return (total_size - diff) / total_size, diff, send_pil(img2)
 
 
