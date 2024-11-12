@@ -239,26 +239,14 @@ def updater():
         schedule.run_pending()
         time.sleep(1)
 
-
-is_void = False
-
-
-def job_minutes():
-    global is_void
-    r = requests.get(f'{PPFUN_URL}/void', impersonate='chrome110')
-    if r.status_code == 200:
-        if "Time until next void: 0 hours, 0 minutes, 0 seconds" in r.text:
-            if not is_void:
-                is_void = True
-                perc, diff = get_difference()
-                text = f"На пм войд, гойда\n\nУкраїна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
-                for chatid in db:
-                    try:
-                        bot.send_message(chatid, text)
-                    except:
-                        pass
-        else:
-            is_void = False
+def job_hours():
+    perc, diff = get_difference()
+    text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+    for chatid in db:
+        try:
+            bot.send_message(chatid, text)
+        except:
+            pass
 
 
 def init_db():
@@ -275,7 +263,7 @@ if __name__ == '__main__':
     with requests.Session() as session:
         resp = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
         bot.send_message(ME, str(resp.status_code))
-    schedule.every(1).minutes.do(job_minutes)
+    schedule.every(3).hours.do(job_hours)
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
