@@ -287,7 +287,7 @@ if __name__ == '__main__':
     with requests.Session() as session:
         resp = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
         bot.send_message(ME, str(resp.status_code))
-    schedule.every(2).minutes.do(job_minutes)
+    schedule.every(3).minutes.do(job_minutes)
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
