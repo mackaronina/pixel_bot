@@ -190,6 +190,7 @@ def get_difference():
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
     matrix = get_area(0, 65536, shablon_x, shablon_y, shablon_w, shablon_h)
+    bot.send_message(ME, 'test4')
     img1 = np.array(matrix.create_image(), dtype='int16')
     total_size = shablon_w * shablon_h
     diff = 0
@@ -290,7 +291,7 @@ if __name__ == '__main__':
     with requests.Session() as session:
         resp = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
         bot.send_message(ME, str(resp.status_code))
-    schedule.every(3).minutes.do(job_minutes)
+    schedule.every(5).minutes.do(job_minutes)
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
