@@ -2,7 +2,7 @@ import math
 import os
 import time
 import traceback
-from io import StringIO
+from io import StringIO, BytesIO
 from threading import Thread
 
 import PIL.Image
@@ -110,12 +110,12 @@ class Matrix:
             self.matrix[y - self.start_y][x - self.start_x] = [color[0], color[1], color[2], 255]
 
 
-def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
+def fetch(session, canvas_id, canvasoffset, ix, iy, target_matrix):
     url = f"{PPFUN_URL}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
-            rsp = sess.get(url, impersonate="chrome110")
+            rsp = session.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -157,29 +157,32 @@ def get_area(canvas_id, canvas_size, x, y, w, h):
     yc = (y - offset) // 256
     hc = (y + h - offset) // 256
     print(f"Loading from {xc} / {yc} to {wc + 1} / {hc + 1} PixelGetter")
-    with requests.Session() as s:
+    with requests.Session() as session:
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
-                fetch(s, canvas_id, canvasoffset, ix, iy, target_matrix)
+                fetch(session, canvas_id, canvasoffset, ix, iy, target_matrix)
         return target_matrix.create_image()
 
 
 def convert_color(color):
     dists = []
     for c in COLORS:
-        d = math.sqrt(math.pow(color[0] - c[0], 2) + math.pow(color[1] - c[1], 2) + math.pow(color[2] - c[2], 2))
+        d = math.sqrt(
+            math.pow(int(color[0]) - c[0], 2) + math.pow(int(color[1]) - c[1], 2) + math.pow(int(color[2]) - c[2], 2))
         dists.append(d)
     return COLORS[dists.index(min(dists))]
 
 
 def get_difference():
-    img = np.array(PIL.Image.open(r"shablon.png"), dtype='int16')
+    img = np.array(PIL.Image.open(r"shablon.png"), dtype='uint8')
     shablon_x = 3515
     shablon_y = -13294
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
     img1 = get_area(0, 65536, shablon_x, shablon_y, shablon_w, shablon_h)
-    total_size = shablon_w * shablon_h
+    show_diff = np.zeros((shablon_h, shablon_w, 4), dtype='uint8')
+    show_diff[0][0] = [255, 0, 0, 255]
+    total_size = 0
     diff = 0
     for x in range(shablon_h):
         for y in range(shablon_w):
@@ -191,7 +194,29 @@ def get_difference():
                 color = img[x][y]
             if color[0] != img1[x][y][0] or color[1] != img1[x][y][1] or color[2] != img1[x][y][2]:
                 diff += 1
-    return (total_size - diff) / total_size, diff
+                show_diff[x][y] = [img1[x][y][0], img1[x][y][1], img1[x][y][2], 255]
+            total_size += 1
+    del img
+    del img1
+    img2 = PIL.Image.new('RGBA', (shablon_w, shablon_h), (255, 0, 0, 0))
+    pxls = img2.load()
+    for x in range(shablon_h):
+        for y in range(shablon_w):
+            try:
+                if show_diff[x][y][3] > 0:
+                    pxls[y, x] = (show_diff[x][y][0], show_diff[x][y][1], show_diff[x][y][2], 255)
+            except (IndexError, KeyError, AttributeError):
+                pass
+    del show_diff
+    return (total_size - diff) / total_size, diff, img2
+
+
+def send_pil(im):
+    bio = BytesIO()
+    bio.name = 'result.png'
+    im.save(bio, 'PNG')
+    bio.seek(0)
+    return bio
 
 
 def to_fixed(f: float, n=0):
@@ -239,12 +264,16 @@ def updater():
         schedule.run_pending()
         time.sleep(1)
 
+
 def job_hours():
-    perc, diff = get_difference()
+    perc, diff, img = get_difference()
+    m = bot.send_document(SERVICE_CHATID, send_pil(img))
+    fil = m.document.file_id
     text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
     for chatid in db:
         try:
             bot.send_message(chatid, text)
+            bot.send_document(chatid, fil, caption="На картинці всі пікселі не за шаблоном")
         except:
             pass
 
@@ -260,10 +289,8 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-    with requests.Session() as session:
-        resp = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
-        bot.send_message(ME, str(resp.status_code))
-    schedule.every(3).hours.do(job_hours)
+    bot.send_message(ME, "ok")
+    schedule.every(3).hours.do(job_hours).run()
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
