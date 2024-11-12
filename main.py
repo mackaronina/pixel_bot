@@ -259,10 +259,13 @@ def job_minutes():
     global is_void
     r = requests.get(f'{PPFUN_URL}/void', impersonate='chrome110')
     if r.status_code == 200:
+        bot.send_message(ME, 'test')
         if "Time until next void: 0 hours, 0 minutes, 0 seconds" in r.text:
             if not is_void:
+                bot.send_message(ME, 'test2')
                 is_void = True
                 perc, diff = get_difference()
+                bot.send_message(ME, 'test3')
                 text = f"На пм войд, гойда\n\nУкраїна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
                 for chatid in db:
                     try:
