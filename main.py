@@ -232,7 +232,9 @@ def handle_text(message, txt):
 
 @bot.message_handler(commands=["testo"])
 def msg_testo(message):
+    bot.send_message(ME, 'abba')
     job_hours()
+    
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
     if message.chat.id == SERVICE_CHATID and message.photo is not None:
