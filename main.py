@@ -179,7 +179,6 @@ def get_difference():
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
     img1 = get_area(0, 65536, shablon_x, shablon_y, shablon_w, shablon_h)
-    bot.send_message(ME, 'test4')
     total_size = shablon_w * shablon_h
     diff = 0
     for x in range(shablon_h):
@@ -248,13 +247,10 @@ def job_minutes():
     global is_void
     r = requests.get(f'{PPFUN_URL}/void', impersonate='chrome110')
     if r.status_code == 200:
-        bot.send_message(ME, 'test')
-        if "Time until next void" in r.text:
+        if "Time until next void: 0 hours, 0 minutes, 0 seconds" in r.text:
             if not is_void:
-                bot.send_message(ME, 'test2')
                 is_void = True
                 perc, diff = get_difference()
-                bot.send_message(ME, 'test3')
                 text = f"На пм войд, гойда\n\nУкраїна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
                 for chatid in db:
                     try:
@@ -279,7 +275,7 @@ if __name__ == '__main__':
     with requests.Session() as session:
         resp = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
         bot.send_message(ME, str(resp.status_code))
-    schedule.every(5).minutes.do(job_minutes)
+    schedule.every(1).minutes.do(job_minutes)
     t = Thread(target=updater)
     t.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
