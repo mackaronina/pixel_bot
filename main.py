@@ -257,9 +257,7 @@ is_void = False
 
 def job_minutes():
     global is_void
-    r = None
-    with requests.Session() as session:
-        r = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
+    r = session.get(f'{PPFUN_URL}/void', impersonate='chrome110')
     if r.status_code == 200:
         bot.send_message(ME, 'test')
         if "Time until next void: 0 hours, 0 minutes, 0 seconds" in r.text:
