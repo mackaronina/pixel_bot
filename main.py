@@ -108,7 +108,7 @@ class Matrix:
             for y in range(self.height):
                 try:
                     color = self.matrix[x + self.start_x][y + self.start_y]
-                    pxls[x, y] = color
+                    pxls[x, y] = COLORS[color]
                 except (IndexError, KeyError, AttributeError):
                     pass
         return img
@@ -131,11 +131,10 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
             if len(data) == 0:
-                clr = COLORS[0]
                 for i in range(256 * 256):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
-                    target_matrix.set_pixel(tx, ty, clr)
+                    target_matrix.set_pixel(tx, ty, 0)
             else:
                 i = 0
                 for b in data:
@@ -144,7 +143,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix):
                     bcl = b & 0x7F
 
                     if 0 <= bcl <= 31:
-                        target_matrix.set_pixel(tx, ty, COLORS[bcl])
+                        target_matrix.set_pixel(tx, ty, bcl)
                     i += 1
             break
         except Exception as e:
