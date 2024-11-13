@@ -207,7 +207,7 @@ def get_difference():
                     pxls[y, x] = (show_diff[x][y][0], show_diff[x][y][1], show_diff[x][y][2], 255)
             except (IndexError, KeyError, AttributeError):
                 pass
-    #img2.save("difference.png")
+    # img2.save("difference.png")
     return (total_size - diff) / total_size, diff, send_pil(img2)
 
 
@@ -230,11 +230,21 @@ def handle_text(message, txt):
         db.append(message.chat.id)
         cursor.execute(f'INSERT INTO ukr_chats (id) VALUES ({message.chat.id})')
 
+
 @bot.message_handler(commands=["testo"])
 def msg_testo(message):
     bot.send_message(ME, 'abba')
     job_hours()
-    
+
+
+@bot.chat_member_handler()
+def msg_chat(upd):
+    if upd.new_chat_member.status == "member" and (
+            upd.old_chat_member.status == "left" or upd.old_chat_member.status == "kicked"):
+        bot.send_animation(upd.chat.id,
+                           'CgACAgQAAyEFAASBdOsgAAIV-Wc0pgq0nWuUz2g9vOV_U8qwONWbAAK9BQAC3_skU_chjKqyZotRNgQ')
+
+
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
     if message.chat.id == SERVICE_CHATID and message.photo is not None:
@@ -272,16 +282,16 @@ def updater():
 def job_hours():
     perc, diff, img = get_difference()
     bot.send_message(ME, 'abba2')
-    #with open("difference.png", 'rb') as img:
+    # with open("difference.png", 'rb') as img:
     m = bot.send_document(SERVICE_CHATID, img)
     fil = m.document.file_id
     text = f"На пм Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
     for chatid in db:
-            try:
-                bot.send_message(chatid, text)
-                bot.send_document(chatid, fil, caption="На картинці всі пікселі не за шаблоном")
-            except:
-                pass
+        try:
+            bot.send_message(chatid, text)
+            bot.send_document(chatid, fil, caption="На картинці всі пікселі не за шаблоном")
+        except:
+            pass
 
 
 def init_db():
