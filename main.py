@@ -200,6 +200,8 @@ def get_difference(url, x, y, file):
             else:
                 show_diff[x][y] = [0, 255, 0, 255]
             total_size += 1
+    del map_img
+    del img
     show_diff = PIL.Image.fromarray(show_diff).convert('RGBA')
     return (total_size - diff) / total_size, diff, send_pil(show_diff)
 
@@ -311,7 +313,6 @@ def msg_testo(message):
     y = int(get_config_value("Y"))
     file = get_pil(get_config_value("FILE"))
     perc, diff, img = get_difference(url, x, y, file)
-    bot.send_message(ME, str(img.getbuffer().nbytes))
     bot.send_message(ME, 'abba2')
     bot.send_document(SERVICE_CHATID, img)
 
