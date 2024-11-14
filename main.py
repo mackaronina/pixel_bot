@@ -309,12 +309,11 @@ def msg_testo(message):
     url = get_config_value("URL")
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    file = get_config_value("FILE")
-    bot.send_document(SERVICE_CHATID, file)
-    file = get_pil(file)
-    bot.send_photo(SERVICE_CHATID, file)
-    file = send_pil(file)
-    bot.send_document(SERVICE_CHATID, file)
+    file = get_pil(get_config_value("FILE"))
+    perc, diff, img = get_difference(url, x, y, file)
+    bot.send_message(ME, str(img.getbuffer().nbytes))
+    bot.send_message(ME, 'abba2')
+    bot.send_document(SERVICE_CHATID, img)
 
 
 @bot.chat_member_handler()
