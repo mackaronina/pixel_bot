@@ -120,11 +120,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
             if len(data) == 0:
-                for i in range(256 * 256):
-                    tx = off_x + i % 256
-                    ty = off_y + i // 256
-                    color = colors[0]
-                    target_matrix.set_pixel(tx, ty, color)
+                raise Exception("No data")
             else:
                 i = 0
                 for b in data:
@@ -137,7 +133,9 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
                         target_matrix.set_pixel(tx, ty, color)
                     i += 1
             break
-        except:
+        except Exception as e:
+            bot.send_message(ME, str(e))
+            bot.send_message(ME, str(url))
             if attempts > 5:
                 print(f"Could not get {url} in five tries, cancelling")
                 return False
