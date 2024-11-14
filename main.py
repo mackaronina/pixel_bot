@@ -169,7 +169,7 @@ def get_difference():
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
     canvas = fetch_me()["canvases"]["0"]
-    colors = list(map(canvas["colors"], tuple))
+    colors = [tuple(color) for color in canvas["colors"]]
     map_img = get_area(0, canvas["size"], X, Y, shablon_w, shablon_h, colors)
     show_diff = np.zeros((shablon_h, shablon_w, 4), dtype='uint8')
     total_size = 0
