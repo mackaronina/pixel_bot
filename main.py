@@ -136,11 +136,12 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
         except:
             if attempts > 5:
                 print(f"Could not get {url} in five tries, cancelling")
-                raise
+                return False
             attempts += 1
             print(f"Failed to load {url}, trying again in 3s")
             time.sleep(3)
             pass
+    return True
 
 
 def get_area(canvas_id, canvas_size, x, y, w, h, colors, url):
@@ -161,7 +162,8 @@ def get_area(canvas_id, canvas_size, x, y, w, h, colors, url):
                 t.start()
                 threads.append(t)
         for t in threads:
-            t.join()
+            if not t.join():
+                raise Exception("Failed to load")
         return target_matrix.create_image()
 
 
@@ -307,9 +309,12 @@ def msg_testo(message):
     url = get_config_value("URL")
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    file = get_pil(get_config_value("FILE"))
-    perc, diff, img = get_difference(url, x, y, file)
-    bot.send_photo(SERVICE_CHATID, img)
+    file = get_config_value("FILE")
+    bot.send_document(SERVICE_CHATID, file)
+    file = get_pil(file)
+    bot.send_photo(SERVICE_CHATID, file)
+    file = send_pil(file)
+    bot.send_document(SERVICE_CHATID, file)
 
 
 @bot.chat_member_handler()
