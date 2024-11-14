@@ -251,10 +251,9 @@ def msg_site(message):
         return
     args = extract_arg(message.text)
     if len(args) < 1:
-        bot.reply_to(message,
-                     "Формат команди: /set_site [сайт]\n\
-                     Цією командою вказується сайт, з мапою на якому буде порівнюватись шаблон\n\
-                     Приклади:\n/set_site pixmap.fun\n/set_site pixelplanet.fun\n/set_site pixuniverse.fun")
+        bot.reply_to(message, "Формат команди: /set_site [сайт]\n\
+        Цією командою вказується сайт, з мапою на якому буде порівнюватись шаблон\n\
+        Приклади:\n/set_site pixmap.fun\n/set_site pixelplanet.fun\n/set_site pixuniverse.fun")
         return
     bot.reply_to(message, "Перевірка з'єднання з сайтом...")
     try:
@@ -272,10 +271,9 @@ def msg_coords(message):
         return
     args = extract_arg(message.text)
     if len(args) < 1:
-        bot.reply_to(message,
-                     "Формат команди: /set_coords [x_y]\n\
-                     Цією командою вказуються координати шаблону\n\
-                     Приклади:\n/set_coords 3687_-13342\n/set_coords 7235_-9174\n/set_coords 3515_-13294")
+        bot.reply_to(message, "Формат команди: /set_coords [x_y]\n\
+        Цією командою вказуються координати шаблону\n\
+        Приклади:\n/set_coords 3687_-13342\n/set_coords 7235_-9174\n/set_coords 3515_-13294")
         return
     try:
         x_y = args[0]
@@ -295,9 +293,8 @@ def msg_shablon(message):
         return
     repl = message.reply_to_message
     if repl is None or repl.document is None:
-        bot.reply_to(message,
-                     "Формат команди: /set_shablon\n\
-                     Цією командою необхідно відповісти на повідомлення з файлом шаблону")
+        bot.reply_to(message, "Формат команди: /set_shablon\n\
+        Цією командою необхідно відповісти на повідомлення з файлом шаблону")
         return
     if repl.document.mime_type != 'image/png':
         bot.reply_to(message, "Файл не у форматі png, сосі")
@@ -309,8 +306,8 @@ def msg_shablon(message):
 @bot.message_handler(commands=["testo"])
 def msg_testo(message):
     url = get_config_value("URL")
-    x = get_config_value("X")
-    y = get_config_value("Y")
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
     file = get_pil(get_config_value("FILE"))
     perc, diff, img = get_difference(url, x, y, file)
     bot.send_document(SERVICE_CHATID, img)
@@ -356,8 +353,8 @@ def updater():
 def job_hour():
     try:
         url = get_config_value("URL")
-        x = get_config_value("X")
-        y = get_config_value("Y")
+        x = int(get_config_value("X"))
+        y = int(get_config_value("Y"))
         file = get_pil(get_config_value("FILE"))
         perc, diff, img = get_difference(url, x, y, file)
         bot.send_message(ME, 'abba2')
