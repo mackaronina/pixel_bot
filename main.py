@@ -100,8 +100,8 @@ def fetch_me(url):
                 data = resp.json()
                 return data
             except:
-                if attempts > 3:
-                    print(f"Could not get {url} in three tries, cancelling")
+                if attempts > 5:
+                    print(f"Could not get {url} in five tries, cancelling")
                     raise
                 attempts += 1
                 print(f"Failed to load {url}, trying again in 5s")
@@ -134,8 +134,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
                     i += 1
             break
         except:
-            if attempts > 3:
-                print(f"Could not get {url} in three tries, cancelling")
+            if attempts > 5:
+                print(f"Could not get {url} in five tries, cancelling")
                 raise
             attempts += 1
             print(f"Failed to load {url}, trying again in 3s")
@@ -198,8 +198,6 @@ def get_difference(url, x, y, file):
             else:
                 show_diff[x][y] = [0, 255, 0, 255]
             total_size += 1
-    del map_img
-    del img
     show_diff = PIL.Image.fromarray(show_diff).convert('RGBA')
     return (total_size - diff) / total_size, diff, send_pil(show_diff)
 
@@ -311,7 +309,7 @@ def msg_testo(message):
     y = int(get_config_value("Y"))
     file = get_pil(get_config_value("FILE"))
     perc, diff, img = get_difference(url, x, y, file)
-    bot.send_document(SERVICE_CHATID, img)
+    bot.send_photo(SERVICE_CHATID, img)
 
 
 @bot.chat_member_handler()
