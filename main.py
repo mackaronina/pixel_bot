@@ -229,7 +229,10 @@ def check_access(message):
 def get_pil(fid):
     file_info = bot.get_file(fid)
     downloaded_file = bot.download_file(file_info.file_path)
-    im = PIL.Image.open(BytesIO(downloaded_file))
+    bio = BytesIO(downloaded_file)
+    bio.name = 'result.png'
+    bio.seek(0, 0)
+    im = PIL.Image.open(bio)
     return im
 
 
@@ -251,9 +254,8 @@ def msg_site(message):
         return
     args = extract_arg(message.text)
     if len(args) < 1:
-        bot.reply_to(message, "Формат команди: /set_site [сайт]\n\
-        Цією командою вказується сайт, з мапою на якому буде порівнюватись шаблон\n\
-        Приклади:\n/set_site pixmap.fun\n/set_site pixelplanet.fun\n/set_site pixuniverse.fun")
+        bot.reply_to(message,
+                     "Формат команди: /set_site [сайт]\nЦією командою вказується сайт, з мапою на якому буде порівнюватись шаблон\nПриклади:\n/set_site pixmap.fun\n/set_site pixelplanet.fun\n/set_site pixuniverse.fun")
         return
     bot.reply_to(message, "Перевірка з'єднання з сайтом...")
     try:
@@ -271,9 +273,8 @@ def msg_coords(message):
         return
     args = extract_arg(message.text)
     if len(args) < 1:
-        bot.reply_to(message, "Формат команди: /set_coords [x_y]\n\
-        Цією командою вказуються координати шаблону\n\
-        Приклади:\n/set_coords 3687_-13342\n/set_coords 7235_-9174\n/set_coords 3515_-13294")
+        bot.reply_to(message,
+                     "Формат команди: /set_coords [x_y]\nЦією командою вказуються координати шаблону\nПриклади:\n/set_coords 3687_-13342\n/set_coords 7235_-9174\n/set_coords 3515_-13294")
         return
     try:
         x_y = args[0]
@@ -293,8 +294,8 @@ def msg_shablon(message):
         return
     repl = message.reply_to_message
     if repl is None or repl.document is None:
-        bot.reply_to(message, "Формат команди: /set_shablon\n\
-        Цією командою необхідно відповісти на повідомлення з файлом шаблону")
+        bot.reply_to(message,
+                     "Формат команди: /set_shablon\nЦією командою необхідно відповісти на повідомлення з файлом шаблону")
         return
     if repl.document.mime_type != 'image/png':
         bot.reply_to(message, "Файл не у форматі png, сосі")
