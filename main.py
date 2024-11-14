@@ -19,11 +19,6 @@ SERVICE_CHATID = -1002171923232
 token = os.environ['BOT_TOKEN']
 APP_URL = f'https://pixel-bot-5lns.onrender.com/{token}'
 
-URL = 'pixmap.fun'
-X = 3515
-Y = -13294
-FILE = 'shablon.png'
-
 
 class ExHandler(telebot.ExceptionHandler):
     def handle(self, exc):
@@ -45,6 +40,21 @@ cursor = create_engine(
     f'postgresql://postgres.hdahfrunlvoethhwinnc:gT77Av9pQ8IjleU2@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
     pool_recycle=280)
 DB_CHATS = [-1002171923232, -1002037657920]
+
+
+def get_config_value(key):
+    data = cursor.execute(f"SELECT value FROM key_value WHERE key = '{key}'").fetchone()
+    if data is None:
+        return None
+    else:
+        return data[0]
+
+
+def set_config_value(key, value):
+    if get_config_value(key) is None:
+        cursor.execute(f"INSERT INTO key_value (key, value) VALUES ('{key}', '{value}')")
+    else:
+        cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
 
 
 class Matrix:
@@ -80,8 +90,8 @@ class Matrix:
             self.matrix[y - self.start_y][x - self.start_x] = [color[0], color[1], color[2], 255]
 
 
-def fetch_me():
-    url = f"{URL}/api/me"
+def fetch_me(url):
+    url = f"{url}/api/me"
     with requests.Session() as session:
         attempts = 0
         while True:
@@ -99,8 +109,8 @@ def fetch_me():
                 pass
 
 
-def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors):
-    url = f"{URL}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
+    url = f"{url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
@@ -133,7 +143,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors):
             pass
 
 
-def get_area(canvas_id, canvas_size, x, y, w, h, colors):
+def get_area(canvas_id, canvas_size, x, y, w, h, colors, url):
     target_matrix = Matrix()
     target_matrix.add_coords(x, y, w, h)
     canvasoffset = math.pow(canvas_size, 0.5)
@@ -147,7 +157,7 @@ def get_area(canvas_id, canvas_size, x, y, w, h, colors):
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
                 time.sleep(0.01)
-                t = Thread(target=fetch, args=(session, canvas_id, canvasoffset, ix, iy, target_matrix, colors))
+                t = Thread(target=fetch, args=(session, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url))
                 t.start()
                 threads.append(t)
         for t in threads:
@@ -164,13 +174,13 @@ def convert_color(color, colors):
     return colors[dists.index(min(dists))]
 
 
-def get_difference():
-    img = np.array(PIL.Image.open(FILE), dtype='uint8')
+def get_difference(url, x, y, file):
+    img = np.array(file, dtype='uint8')
     shablon_w = img.shape[1]
     shablon_h = img.shape[0]
-    canvas = fetch_me()["canvases"]["0"]
+    canvas = fetch_me(url)["canvases"]["0"]
     colors = [tuple(color) for color in canvas["colors"]]
-    map_img = get_area(0, canvas["size"], X, Y, shablon_w, shablon_h, colors)
+    map_img = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url)
     show_diff = np.zeros((shablon_h, shablon_w, 4), dtype='uint8')
     total_size = 0
     diff = 0
@@ -207,14 +217,103 @@ def to_fixed(f: float, n=0):
     return '{}.{}{}'.format(a, b[:n], '0' * (n - len(b)))
 
 
+def check_access(message):
+    status = bot.get_chat_member(message.chat.id, message.from_user.id).status
+    if message.chat.id not in DB_CHATS or (
+            status != 'administrator' and status != 'creator' and message.from_user.id != ME):
+        bot.reply_to(message, "Сосі")
+        return False
+    return True
+
+
+def get_pil(fid):
+    file_info = bot.get_file(fid)
+    downloaded_file = bot.download_file(file_info.file_path)
+    im = PIL.Image.open(BytesIO(downloaded_file))
+    return im
+
+
+def extract_arg(arg):
+    return arg.split()[1:]
+
+
+@bot.message_handler(commands=["map"])
+def msg_map(message):
+    if not check_access(message):
+        return
+    bot.reply_to(message, "Зроз, чекай")
+    task.run()
+
+
+@bot.message_handler(commands=["set_site"])
+def msg_site(message):
+    if not check_access(message):
+        return
+    args = extract_arg(message.text)
+    if len(args) < 1:
+        bot.reply_to(message,
+                     "Формат команди: /set_site [сайт]\n\
+                     Цією командою вказується сайт, з мапою на якому буде порівнюватись шаблон\n\
+                     Приклади:\n/set_site pixmap.fun\n/set_site pixelplanet.fun\n/set_site pixuniverse.fun")
+        return
+    bot.reply_to(message, "Перевірка з'єднання з сайтом...")
+    try:
+        fetch_me(args[0])["canvases"]["0"]
+    except:
+        bot.reply_to(message, "Не вдалось зв'єднатись,  сосі")
+        return
+    set_config_value("URL", args[0])
+    bot.reply_to(message, "Ок, все норм")
+
+
+@bot.message_handler(commands=["set_coords"])
+def msg_coords(message):
+    if not check_access(message):
+        return
+    args = extract_arg(message.text)
+    if len(args) < 1:
+        bot.reply_to(message,
+                     "Формат команди: /set_coords [x_y]\n\
+                     Цією командою вказуються координати шаблону\n\
+                     Приклади:\n/set_coords 3687_-13342\n/set_coords 7235_-9174\n/set_coords 3515_-13294")
+        return
+    try:
+        x_y = args[0]
+        x = int(x_y.split('_')[0])
+        y = int(x_y.split('_')[1])
+    except:
+        bot.reply_to(message, "Координати хуйня, сосі")
+        return
+    set_config_value("X", x)
+    set_config_value("Y", y)
+    bot.reply_to(message, "Ок, все норм")
+
+
+@bot.message_handler(commands=["set_shablon"])
+def msg_shablon(message):
+    if not check_access(message):
+        return
+    repl = message.reply_to_message
+    if repl is None or repl.document is None:
+        bot.reply_to(message,
+                     "Формат команди: /set_shablon\n\
+                     Цією командою необхідно відповісти на повідомлення з файлом шаблону")
+        return
+    if repl.document.mime_type != 'image/png':
+        bot.reply_to(message, "Файл не у форматі png, сосі")
+        return
+    set_config_value("FILE", repl.document.file_id)
+    bot.reply_to(message, "Ок, все норм")
+
+
 @bot.message_handler(commands=["testo"])
 def msg_testo(message):
-    perc, diff, img = get_difference()
-    m = bot.send_document(SERVICE_CHATID, img)
-    fil = m.document.file_id
-    text = f"На {URL} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
-    bot.send_message(SERVICE_CHATID, text)
-    bot.send_document(SERVICE_CHATID, fil, caption="Зеленим пікселі за шаблоном, іншими кольорами - ні")
+    url = get_config_value("URL")
+    x = get_config_value("X")
+    y = get_config_value("Y")
+    file = get_pil(get_config_value("FILE"))
+    perc, diff, img = get_difference(url, x, y, file)
+    bot.send_document(SERVICE_CHATID, img)
 
 
 @bot.chat_member_handler()
@@ -254,24 +353,31 @@ def updater():
         time.sleep(1)
 
 
-def job_hours():
-    perc, diff, img = get_difference()
-    bot.send_message(ME, 'abba2')
-    m = bot.send_document(SERVICE_CHATID, img)
-    fil = m.document.file_id
-    text = f"На {URL} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
-    for chatid in DB_CHATS:
-        try:
-            bot.send_message(chatid, text)
-            bot.send_document(chatid, fil,
-                              caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
-        except:
-            pass
+def job_hour():
+    try:
+        url = get_config_value("URL")
+        x = get_config_value("X")
+        y = get_config_value("Y")
+        file = get_pil(get_config_value("FILE"))
+        perc, diff, img = get_difference(url, x, y, file)
+        bot.send_message(ME, 'abba2')
+        m = bot.send_document(SERVICE_CHATID, img)
+        fil = m.document.file_id
+        text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+        for chatid in DB_CHATS:
+            try:
+                bot.send_message(chatid, text)
+                bot.send_document(chatid, fil,
+                                  caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
+            except:
+                pass
+    except Exception as e:
+        bot.send_message(ME, str(e))
 
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    schedule.every(120).minutes.do(job_hours)
+    task = schedule.every(60).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
