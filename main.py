@@ -120,7 +120,11 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
             if len(data) == 0:
-                raise Exception("len(data) == 0")
+                for i in range(256 * 256):
+                    tx = off_x + i % 256
+                    ty = off_y + i // 256
+                    color = colors[0]
+                    target_matrix.set_pixel(tx, ty, color)
             else:
                 i = 0
                 for b in data:
@@ -140,7 +144,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
             attempts += 1
             print(f"Failed to load {url}, trying again in 3s")
             time.sleep(3)
-            pass
     return True
 
 
