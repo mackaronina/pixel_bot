@@ -163,8 +163,7 @@ def get_area(canvas_id, canvas_size, x, y, w, h, colors, url):
                 t.start()
                 threads.append(t)
         for t in threads:
-            if not t.join():
-                raise Exception("Failed to load")
+            t.join()
         return target_matrix.create_image()
 
 
