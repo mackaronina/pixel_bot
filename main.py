@@ -306,17 +306,6 @@ def msg_shablon(message):
     bot.reply_to(message, "Ок, все норм")
 
 
-@bot.message_handler(commands=["testo"])
-def msg_testo(message):
-    url = get_config_value("URL")
-    x = int(get_config_value("X"))
-    y = int(get_config_value("Y"))
-    file = get_pil(get_config_value("FILE"))
-    perc, diff, img = get_difference(url, x, y, file)
-    bot.send_message(ME, 'abba2')
-    bot.send_document(SERVICE_CHATID, img)
-
-
 @bot.chat_member_handler()
 def msg_chat(upd):
     if upd.new_chat_member.status == "member" and upd.old_chat_member.status == "left":
@@ -354,8 +343,15 @@ def updater():
         time.sleep(1)
 
 
+is_running = False
+
+
 def job_hour():
+    global is_running
     try:
+        if is_running:
+            return
+        is_running = True
         url = get_config_value("URL")
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
@@ -374,6 +370,8 @@ def job_hour():
                 pass
     except Exception as e:
         bot.send_message(ME, str(e))
+    finally:
+        is_running = False
 
 
 if __name__ == '__main__':
