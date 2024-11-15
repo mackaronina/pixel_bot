@@ -1,5 +1,6 @@
 import math
 import os
+import re
 import time
 import traceback
 from io import StringIO, BytesIO
@@ -14,10 +15,14 @@ from flask import Flask, request
 from sqlalchemy import create_engine
 from telebot import apihelper
 
+ANONIM = 1087968824
 ME = 7258570440
 SERVICE_CHATID = -1002171923232
-token = os.environ['BOT_TOKEN']
-APP_URL = f'https://pixel-bot-5lns.onrender.com/{token}'
+TOKEN = os.environ['BOT_TOKEN']
+APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
+
+is_running = False
+chunk_info = {}
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -29,7 +34,7 @@ class ExHandler(telebot.ExceptionHandler):
         return True
 
 
-bot = telebot.TeleBot(token, threaded=True, num_threads=10, parse_mode='HTML', exception_handler=ExHandler())
+bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=10, parse_mode='HTML', exception_handler=ExHandler())
 apihelper.RETRY_ON_ERROR = True
 app = Flask(__name__)
 bot.remove_webhook()
@@ -57,39 +62,6 @@ def set_config_value(key, value):
         cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
 
 
-class Matrix:
-    def __init__(self):
-        self.start_x = None
-        self.start_y = None
-        self.width = None
-        self.height = None
-        self.matrix = None
-
-    def add_coords(self, x, y, w, h):
-        if self.start_x is None or self.start_x > x:
-            self.start_x = x
-        if self.start_y is None or self.start_y > y:
-            self.start_y = y
-        end_x_a = x + w
-        end_y_a = y + h
-        if self.width is None or self.height is None:
-            self.width = w
-            self.height = h
-        else:
-            end_x_b = self.start_x + self.width
-            end_y_b = self.start_y + self.height
-            self.width = max(end_x_b, end_x_a) - self.start_x
-            self.height = max(end_y_b, end_y_a) - self.start_y
-        self.matrix = np.zeros((self.height, self.width, 4), dtype='uint8')
-
-    def create_image(self):
-        return self.matrix
-
-    def set_pixel(self, x, y, color):
-        if self.start_x <= x < (self.start_x + self.width) and self.start_y <= y < (self.start_y + self.height):
-            self.matrix[y - self.start_y][x - self.start_x] = [color[0], color[1], color[2], 255]
-
-
 def fetch_me(url):
     url = f"{url}/api/me"
     with requests.Session() as session:
@@ -98,7 +70,11 @@ def fetch_me(url):
             try:
                 resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
-                return data
+                canvases = data["canvases"]
+                for canvas in canvases.values():
+                    if canvas["ident"] == "d":
+                        return canvas
+                return None
             except:
                 if attempts > 5:
                     print(f"Could not get {url} in five tries, cancelling")
@@ -109,7 +85,8 @@ def fetch_me(url):
                 pass
 
 
-def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
+def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
+          height):
     url = f"{url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
@@ -122,49 +99,71 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url):
             if len(data) == 0:
                 raise Exception("No data")
             else:
-                i = 0
-                for b in data:
+                for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
                     bcl = b & 0x7F
 
                     if 0 <= bcl < len(colors):
-                        color = colors[bcl]
-                        target_matrix.set_pixel(tx, ty, color)
-                    i += 1
+                        map_color = colors[bcl]
+                        if not (start_x <= tx < (start_x + width) and start_y <= ty < (
+                                start_y + height)):
+                            continue
+                        x = ty - start_y
+                        y = tx - start_x
+                        if img[x][y][3] < 255:
+                            img[x][y][3] = 0
+                            continue
+                        if (img[x][y][0], img[x][y][1], img[x][y][2]) not in colors:
+                            color = convert_color(img[x][y], colors)
+                        else:
+                            color = img[x][y]
+                        if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
+                            result["diff"] += 1
+                            img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
+                        else:
+                            img[x][y] = [0, 255, 0, 255]
+                        result["total_size"] += 1
             break
         except Exception as e:
             bot.send_message(ME, str(e))
             bot.send_message(ME, str(url))
             if attempts > 5:
                 print(f"Could not get {url} in five tries, cancelling")
-                return False
+                result["error"] = True
+                return
             attempts += 1
             print(f"Failed to load {url}, trying again in 3s")
             time.sleep(3)
-    return True
 
 
-def get_area(canvas_id, canvas_size, x, y, w, h, colors, url):
-    target_matrix = Matrix()
-    target_matrix.add_coords(x, y, w, h)
+def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
+    result = {
+        "error": False,
+        "total_size": 0,
+        "diff": 0
+    }
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
-    xc = (x - offset) // 256
-    wc = (x + w - offset) // 256
-    yc = (y - offset) // 256
-    hc = (y + h - offset) // 256
+    xc = (start_x - offset) // 256
+    wc = (start_x + width - offset) // 256
+    yc = (start_y - offset) // 256
+    hc = (start_y + height - offset) // 256
     with requests.Session() as session:
         threads = []
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
                 time.sleep(0.01)
-                t = Thread(target=fetch, args=(session, canvas_id, canvasoffset, ix, iy, target_matrix, colors, url))
+                t = Thread(target=fetch, args=(
+                    session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
+                    height))
                 t.start()
                 threads.append(t)
         for t in threads:
             t.join()
-        return target_matrix.create_image()
+        if result["error"]:
+            raise Exception("Failed to load area")
+        return result
 
 
 def convert_color(color, colors):
@@ -174,36 +173,6 @@ def convert_color(color, colors):
             math.pow(int(color[0]) - c[0], 2) + math.pow(int(color[1]) - c[1], 2) + math.pow(int(color[2]) - c[2], 2))
         dists.append(d)
     return colors[dists.index(min(dists))]
-
-
-def get_difference(url, x, y, file):
-    img = np.array(file, dtype='uint8')
-    shablon_w = img.shape[1]
-    shablon_h = img.shape[0]
-    canvas = fetch_me(url)["canvases"]["0"]
-    colors = [tuple(color) for color in canvas["colors"]]
-    map_img = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url)
-    show_diff = np.zeros((shablon_h, shablon_w, 4), dtype='uint8')
-    total_size = 0
-    diff = 0
-    for x in range(shablon_h):
-        for y in range(shablon_w):
-            if img[x][y][3] < 255:
-                continue
-            if (img[x][y][0], img[x][y][1], img[x][y][2]) not in colors:
-                color = convert_color(img[x][y], colors)
-            else:
-                color = img[x][y]
-            if color[0] != map_img[x][y][0] or color[1] != map_img[x][y][1] or color[2] != map_img[x][y][2]:
-                diff += 1
-                show_diff[x][y] = [map_img[x][y][0], map_img[x][y][1], map_img[x][y][2], 255]
-            else:
-                show_diff[x][y] = [0, 255, 0, 255]
-            total_size += 1
-    del map_img
-    del img
-    show_diff = PIL.Image.fromarray(show_diff).convert('RGBA')
-    return (total_size - diff) / total_size, diff, send_pil(show_diff)
 
 
 def send_pil(im):
@@ -222,7 +191,7 @@ def to_fixed(f: float, n=0):
 def check_access(message):
     status = bot.get_chat_member(message.chat.id, message.from_user.id).status
     if message.chat.id not in DB_CHATS or (
-            status != 'administrator' and status != 'creator' and message.from_user.id != ME):
+            status != 'administrator' and status != 'creator' and message.from_user.id != ME and message.from_user.id != ANONIM):
         bot.reply_to(message, "Сосі")
         return False
     return True
@@ -244,6 +213,8 @@ def extract_arg(arg):
 
 @bot.message_handler(commands=["map"])
 def msg_map(message):
+    bot.reply_to(message, "Іді спі, команда не працює")
+    return
     if not check_access(message):
         return
     bot.reply_to(message, "Зроз, чекай")
@@ -261,9 +232,9 @@ def msg_site(message):
         return
     bot.reply_to(message, "Перевірка з'єднання з сайтом...")
     try:
-        fetch_me(args[0])["canvases"]["0"]
+        fetch_me(args[0])
     except:
-        bot.reply_to(message, "Не вдалось зв'єднатись,  сосі")
+        bot.reply_to(message, "Не вдалось зв'єднатись, сосі")
         return
     set_config_value("URL", args[0])
     bot.reply_to(message, "Ок, все норм")
@@ -312,8 +283,46 @@ def msg_shablon_info(message):
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     file = get_config_value("FILE")
-    bot.send_document(message.chat.id, file, caption=f"<pre>{x}_{y}</pre>\n\n{url}",
+    bot.send_document(message.chat.id, file, caption=f"<code>{x}_{y}</code>\n\n{url}",
                       reply_to_message_id=message.message_id)
+
+
+@bot.message_handler(commands=["testo"])
+def msg_testo(message):
+    url = get_config_value("URL")
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
+    file = get_config_value("FILE")
+    img = np.array(get_pil(file), dtype='uint8')
+    shablon_w = img.shape[1]
+    shablon_h = img.shape[0]
+    canvas = fetch_me(url)
+    colors = [tuple(color) for color in canvas["colors"]]
+    result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
+    total_size = result["total_size"]
+    diff = result["diff"]
+    perc = (total_size - diff) / total_size
+    img = PIL.Image.fromarray(img).convert('RGBA')
+    img = send_pil(img)
+    bot.send_document(ME, img)
+    text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+    bot.send_message(ME, text)
+
+
+@bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
+def msg_text(message):
+    if message.text is not None:
+        handle_text(message, message.text)
+    elif message.caption is not None:
+        handle_text(message, message.caption)
+
+
+def handle_text(message, txt):
+    low = txt.lower()
+    if re.search(r'\bсбу\b', low):
+        bot.send_sticker(message.chat.id,
+                         'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
+                         reply_to_message_id=message.message_id)
 
 
 @bot.chat_member_handler()
@@ -333,7 +342,7 @@ def msg_text(message):
         bot.send_message(message.chat.id, str(message.animation.file_id), reply_to_message_id=message.message_id)
 
 
-@app.route('/' + token, methods=['POST'])
+@app.route('/' + TOKEN, methods=['POST'])
 def get_message():
     json_string = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_string)
@@ -353,9 +362,6 @@ def updater():
         time.sleep(1)
 
 
-is_running = False
-
-
 def job_hour():
     global is_running
     try:
@@ -365,8 +371,18 @@ def job_hour():
         url = get_config_value("URL")
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
-        file = get_pil(get_config_value("FILE"))
-        perc, diff, img = get_difference(url, x, y, file)
+        file = get_config_value("FILE")
+        img = np.array(get_pil(file), dtype='uint8')
+        shablon_w = img.shape[1]
+        shablon_h = img.shape[0]
+        canvas = fetch_me(url)
+        colors = [tuple(color) for color in canvas["colors"]]
+        result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
+        total_size = result["total_size"]
+        diff = result["diff"]
+        perc = (total_size - diff) / total_size
+        img = PIL.Image.fromarray(img).convert('RGBA')
+        img = send_pil(img)
         bot.send_message(ME, 'abba2')
         m = bot.send_document(SERVICE_CHATID, img)
         fil = m.document.file_id
@@ -386,7 +402,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    task = schedule.every(60).minutes.do(job_hour)
+    task = schedule.every(56).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
