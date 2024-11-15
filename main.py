@@ -312,7 +312,7 @@ def msg_shablon_info(message):
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     file = get_config_value("FILE")
-    bot.send_document(message.chat.id, file, caption=f"<code>{x}_{y}</code>\n\n{url}",
+    bot.send_document(message.chat.id, file, caption=f"<pre>{x}_{y}</pre>\n\n{url}",
                       reply_to_message_id=message.message_id)
 
 
