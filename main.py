@@ -306,6 +306,16 @@ def msg_shablon(message):
     bot.reply_to(message, "Ок, все норм")
 
 
+@bot.message_handler(commands=["shablon"])
+def msg_shablon_info(message):
+    url = get_config_value("URL")
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
+    file = get_config_value("FILE")
+    bot.send_document(message.chat.id, file, caption=f"<code>{x}_{y}</code>\n\n{url}",
+                      reply_to_message_id=message.message_id)
+
+
 @bot.chat_member_handler()
 def msg_chat(upd):
     if upd.new_chat_member.status == "member" and upd.old_chat_member.status == "left":
