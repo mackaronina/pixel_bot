@@ -24,8 +24,7 @@ APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 is_running = False
 chunk_info = {}
 old_chunks_diff = {}
-all_links = []
-last_time = 0
+all_links = {}
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -104,6 +103,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                 raise Exception("No data")
             else:
                 chunk_diff = 0
+                chunk_key = None
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
@@ -126,13 +126,15 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
                             if chunk_diff == 0:
-                                all_links.append(f"{base_url}/#d,{tx},{ty},30")
+                                chunk_key = f"{base_url}/#d,{tx},{ty},30"
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
                             img[x][y] = [0, 255, 0, 255]
                         result["total_size"] += 1
                 result["chunks_diff"][f"{off_x + 128}_{off_y + 128}"] = chunk_diff
+                if chunk_key is not None:
+                    all_links[chunk_key] = chunk_diff
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -147,7 +149,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
 
 
 def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
-    global last_time
     all_links.clear()
     result = {
         "error": False,
@@ -176,14 +177,12 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
             t.join()
     if result["error"]:
         raise Exception("Failed to load area")
-    if time.time() - last_time > 3600:
-        last_time = time.time()
-        for k, v in result["chunks_diff"].items():
-            if k in old_chunks_diff and v - old_chunks_diff[k] > 1000:
-                x = k.split('_')[0]
-                y = k.split('_')[1]
-                result["alert_chunks"].append(f"{url}/#d,{x},{y},11")
-            old_chunks_diff[k] = v
+    for k, v in result["chunks_diff"].items():
+        if k in old_chunks_diff and v - old_chunks_diff[k] > 1000:
+            x = k.split('_')[0]
+            y = k.split('_')[1]
+            result["alert_chunks"].append(f"{url}/#d,{x},{y},11")
+        old_chunks_diff[k] = v
     return result
 
 
@@ -309,9 +308,10 @@ def msg_shablon_info(message):
 @bot.message_handler(commands=["coords"])
 def msg_coords_info(message):
     if len(all_links) > 0:
-        text = "Дані оновлюються після кожної генерації карти. Під час останньої перевірки за цими координатами знайдено пікселі не по шаблону:"
-        for link in all_links:
-            text += f"\n{link}"
+        text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
+        sorted_links = sorted(all_links.items(), key=lambda item: item[1], reverse=True)
+        for link, val in sorted_links:
+            text += f"\n{link} {val}"
     else:
         text = "Нічого не знайдено, сосі"
     bot.reply_to(message, text)
