@@ -126,7 +126,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
                             if chunk_diff == 0:
-                                chunk_key = f"{base_url}/#d,{tx},{ty},30"
+                                chunk_key = f'<a href="https://{base_url}/#d,{tx},{ty},30">{tx},{ty}</a>'
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
@@ -181,7 +181,7 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
         if k in old_chunks_diff and v - old_chunks_diff[k] > 1000:
             x = k.split('_')[0]
             y = k.split('_')[1]
-            result["alert_chunks"].append(f"{url}/#d,{x},{y},11")
+            result["alert_chunks"].append(f"https://{url}/#d,{x},{y},11")
         old_chunks_diff[k] = v
     return result
 
