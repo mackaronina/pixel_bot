@@ -22,9 +22,8 @@ TOKEN = os.environ['BOT_TOKEN']
 APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 
 is_running = False
-chunk_info = {}
 old_chunks_diff = {}
-all_links = {}
+chunks_info = []
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -66,7 +65,7 @@ def set_config_value(key, value):
 
 
 def fetch_me(url):
-    url = f"{url}/api/me"
+    url = f"https://{url}/api/me"
     with requests.Session() as session:
         attempts = 0
         while True:
@@ -103,7 +102,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                 raise Exception("No data")
             else:
                 chunk_diff = 0
-                chunk_key = None
+                chunk_pixel = None
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
@@ -126,15 +125,18 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
                             if chunk_diff == 0:
-                                chunk_key = f'<a href="https://{base_url}/#d,{tx},{ty},30">{tx},{ty}</a>'
+                                chunk_pixel = f'<a href="https://{base_url}/#d,{tx},{ty},25">{tx},{ty}</a>'
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
                             img[x][y] = [0, 255, 0, 255]
                         result["total_size"] += 1
-                result["chunks_diff"][f"{off_x + 128}_{off_y + 128}"] = chunk_diff
-                if chunk_key is not None:
-                    all_links[chunk_key] = chunk_diff
+                chunks_info.append({
+                    "key": f"{off_x}_{off_y}",
+                    "diff": chunk_diff,
+                    "pixel_link": chunk_pixel,
+                    "change": 0
+                })
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -149,13 +151,11 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
 
 
 def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
-    all_links.clear()
+    chunks_info.clear()
     result = {
         "error": False,
         "total_size": 0,
-        "diff": 0,
-        "chunks_diff": {},
-        "alert_chunks": []
+        "diff": 0
     }
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
@@ -177,12 +177,10 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
             t.join()
     if result["error"]:
         raise Exception("Failed to load area")
-    for k, v in result["chunks_diff"].items():
-        if k in old_chunks_diff and v - old_chunks_diff[k] > 1000:
-            x = k.split('_')[0]
-            y = k.split('_')[1]
-            result["alert_chunks"].append(f"https://{url}/#d,{x},{y},11")
-        old_chunks_diff[k] = v
+    for chunk in chunks_info:
+        if chunk["key"] in old_chunks_diff and chunk["diff"] - old_chunks_diff[chunk["key"]] > 0:
+            chunk["change"] = chunk["diff"] - old_chunks_diff[chunk["key"]]
+        old_chunks_diff[chunk["key"]] = chunk["diff"]
     return result
 
 
@@ -307,13 +305,16 @@ def msg_shablon_info(message):
 
 @bot.message_handler(commands=["coords"])
 def msg_coords_info(message):
-    if len(all_links) > 0:
-        text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
-        sorted_links = sorted(all_links.items(), key=lambda item: item[1], reverse=True)
-        for link, val in sorted_links:
-            text += f"\n{link} {val}"
-    else:
+    if len(chunks_info) == 0:
         text = "Нічого не знайдено, сосі"
+    else:
+        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["diff"], reverse=True)
+        if sorted_chunks[0]["diff"] <= 0:
+            text = "Нічого не знайдено, сосі"
+        else:
+            text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
+            for chunk in sorted_chunks:
+                text += f"\n{chunk["pixel_link"]} {chunk["diff"]}"
     bot.reply_to(message, text)
 
 
@@ -396,10 +397,13 @@ def job_hour():
         fil = m.document.file_id
         text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
         text2 = None
-        if len(result["alert_chunks"]) > 0:
-            text2 = "За цими координатами помічено ворожу активність, бажано задефати:"
-            for link in result["alert_chunks"]:
-                text2 += f"\n{link}"
+        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
+        if sorted_chunks[0]["change"] > 0:
+            text2 = "За цими координатами помічено найбільшу ворожу активність:"
+            for i, chunk in enumerate(sorted_chunks):
+                if i == 3 or chunk["change"] <= 0:
+                    break
+                text2 += f"\n{chunk["pixel_link"]} +{chunk["change"]}"
         for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
