@@ -404,7 +404,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    task = schedule.every(56).minutes.do(job_hour)
+    task = schedule.every(60).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
