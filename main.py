@@ -23,6 +23,8 @@ APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 
 is_running = False
 chunk_info = {}
+old_chunks_diff = {}
+last_time = 0
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -60,6 +62,7 @@ def set_config_value(key, value):
         cursor.execute(f"INSERT INTO key_value (key, value) VALUES ('{key}', '{value}')")
     else:
         cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
+    old_chunks_diff.clear()
 
 
 def fetch_me(url):
@@ -99,6 +102,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
             if len(data) == 0:
                 raise Exception("No data")
             else:
+                chunk_diff = 0
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
@@ -120,10 +124,12 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
                             color = img[x][y]
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
+                            chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
                             img[x][y] = [0, 255, 0, 255]
                         result["total_size"] += 1
+                result["chunks_diff"][f"{off_x + 128}_{off_y + 128}"] = chunk_diff
             break
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -138,10 +144,13 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
 
 
 def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
+    global last_time
     result = {
         "error": False,
         "total_size": 0,
-        "diff": 0
+        "diff": 0,
+        "chunks_diff": {},
+        "alert_chunks": []
     }
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
@@ -161,9 +170,17 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
                 threads.append(t)
         for t in threads:
             t.join()
-        if result["error"]:
-            raise Exception("Failed to load area")
-        return result
+    if result["error"]:
+        raise Exception("Failed to load area")
+    if time.time() - last_time > 3600:
+        last_time = time.time()
+        for k, v in result["chunks_diff"].items():
+            if k in old_chunks_diff and v - old_chunks_diff[k] > 1000:
+                x = k.split('_')[0]
+                y = k.split('_')[1]
+                result["alert_chunks"].append(f"{url}/#d,{x},{y},11")
+            old_chunks_diff[k] = v
+    return result
 
 
 def convert_color(color, colors):
@@ -285,29 +302,6 @@ def msg_shablon_info(message):
                       reply_to_message_id=message.message_id)
 
 
-@bot.message_handler(commands=["testo"])
-def msg_testo(message):
-    url = get_config_value("URL")
-    x = int(get_config_value("X"))
-    y = int(get_config_value("Y"))
-    file = get_config_value("FILE")
-    img = np.array(get_pil(file), dtype='uint8')
-    shablon_w = img.shape[1]
-    shablon_h = img.shape[0]
-    canvas = fetch_me(url)
-    colors = [tuple(color) for color in canvas["colors"]]
-    result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
-    total_size = result["total_size"]
-    diff = result["diff"]
-    perc = (total_size - diff) / total_size
-    img = PIL.Image.fromarray(img).convert('RGBA')
-    img = send_pil(img)
-    text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
-    bot.send_message(ME, text)
-    bot.send_message(ME, str(len(img.getvalue())))
-    bot.send_document(ME, img)
-
-
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
     if message.text is not None:
@@ -393,6 +387,15 @@ def job_hour():
                                   caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
             except:
                 pass
+        if len(result["alert_chunks"]) == 0:
+            bot.send_message(ME, 'Без змін')
+        else:
+            text2 = "За цими координатами помічено ворожу активність:"
+            for link in result["alert_chunks"]:
+                text2 += f"\n{link}"
+            bot.send_message(ME, text2)
+
+
     except Exception as e:
         bot.send_message(ME, str(e))
     finally:
@@ -401,7 +404,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    task = schedule.every(55).minutes.do(job_hour)
+    task = schedule.every(56).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
