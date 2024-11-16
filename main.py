@@ -213,8 +213,6 @@ def extract_arg(arg):
 
 @bot.message_handler(commands=["map"])
 def msg_map(message):
-    bot.reply_to(message, "Іді спі, команда не працює")
-    return
     if not check_access(message):
         return
     bot.reply_to(message, "Зроз, чекай")
