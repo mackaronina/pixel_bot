@@ -24,6 +24,7 @@ APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 is_running = False
 chunk_info = {}
 old_chunks_diff = {}
+all_links = []
 last_time = 0
 
 
@@ -130,7 +131,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
                             img[x][y] = [0, 255, 0, 255]
                         result["total_size"] += 1
                 result["chunks_diff"][f"{off_x + 128}_{off_y + 128}"] = chunk_diff
-            break
+                break
         except Exception as e:
             bot.send_message(ME, str(e))
             bot.send_message(ME, str(url))
@@ -145,6 +146,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
 
 def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
     global last_time
+    all_links.clear()
     result = {
         "error": False,
         "total_size": 0,
@@ -172,6 +174,11 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
             t.join()
     if result["error"]:
         raise Exception("Failed to load area")
+    for k, v in result["chunks_diff"].items():
+        if v > 0:
+            x = k.split('_')[0]
+            y = k.split('_')[1]
+            all_links.append(f"{url}/#d,{x},{y},11")
     if time.time() - last_time > 3600:
         last_time = time.time()
         for k, v in result["chunks_diff"].items():
@@ -302,6 +309,17 @@ def msg_shablon_info(message):
                       reply_to_message_id=message.message_id)
 
 
+@bot.message_handler(commands=["coords"])
+def msg_coords_info(message):
+    if len(all_links) > 0:
+        text = "Під час останньої перевірки за цими координатами знайдено пікселі не по шаблону:"
+        for link in all_links:
+            text += f"\n{link}"
+    else:
+        text = "Нічого не знайдено, сосі"
+    bot.reply_to(message, text)
+
+
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
     if message.text is not None:
@@ -404,7 +422,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    schedule.every(56).minutes.do(job_hour)
+    schedule.every(60).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
