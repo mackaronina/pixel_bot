@@ -89,9 +89,9 @@ def fetch_me(url):
                 pass
 
 
-def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
+def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
           height):
-    url = f"{url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+    url = f"{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
@@ -125,6 +125,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start
                             color = img[x][y]
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
+                            if chunk_diff == 0:
+                                all_links.append(f"{base_url}/#d,{tx},{ty},30")
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
@@ -174,11 +176,6 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
             t.join()
     if result["error"]:
         raise Exception("Failed to load area")
-    for k, v in result["chunks_diff"].items():
-        if v > 0:
-            x = k.split('_')[0]
-            y = k.split('_')[1]
-            all_links.append(f"{url}/#d,{x},{y},11")
     if time.time() - last_time > 3600:
         last_time = time.time()
         for k, v in result["chunks_diff"].items():
