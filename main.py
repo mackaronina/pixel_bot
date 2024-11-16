@@ -314,6 +314,8 @@ def msg_coords_info(message):
         else:
             text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
             for chunk in sorted_chunks:
+                if chunk["diff"] <= 0:
+                    break
                 text += f"\n{chunk['pixel_link']} {chunk['diff']}"
     bot.reply_to(message, text)
 
