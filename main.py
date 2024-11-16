@@ -309,7 +309,7 @@ def msg_shablon_info(message):
 @bot.message_handler(commands=["coords"])
 def msg_coords_info(message):
     if len(all_links) > 0:
-        text = "Під час останньої перевірки за цими координатами знайдено пікселі не по шаблону:"
+        text = "Дані оновлюються після кожної генерації карти. Під час останньої перевірки за цими координатами знайдено пікселі не по шаблону:"
         for link in all_links:
             text += f"\n{link}"
     else:
