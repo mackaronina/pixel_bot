@@ -314,7 +314,7 @@ def msg_coords_info(message):
         else:
             text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
             for chunk in sorted_chunks:
-                text += f"\n{chunk["pixel_link"]} {chunk["diff"]}"
+                text += f"\n{chunk['pixel_link']} {chunk['diff']}"
     bot.reply_to(message, text)
 
 
@@ -403,7 +403,7 @@ def job_hour():
             for i, chunk in enumerate(sorted_chunks):
                 if i == 3 or chunk["change"] <= 0:
                     break
-                text2 += f"\n{chunk["pixel_link"]} +{chunk["change"]}"
+                text2 += f"\n{chunk['pixel_link']} +{chunk['change']}"
         for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
