@@ -304,9 +304,10 @@ def msg_testo(message):
     perc = (total_size - diff) / total_size
     img = PIL.Image.fromarray(img).convert('RGBA')
     img = send_pil(img)
-    bot.send_document(ME, img)
     text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
     bot.send_message(ME, text)
+    bot.send_message(ME, str(len(img.getvalue())))
+    bot.send_document(ME, img)
 
 
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
@@ -402,7 +403,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    task = schedule.every(56).minutes.do(job_hour)
+    task = schedule.every(55).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
