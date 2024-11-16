@@ -233,7 +233,7 @@ def msg_map(message):
     if not check_access(message):
         return
     bot.reply_to(message, "Зроз, чекай")
-    task.run()
+    job_hour()
 
 
 @bot.message_handler(commands=["set_site"])
@@ -380,20 +380,20 @@ def job_hour():
         m = bot.send_document(SERVICE_CHATID, img)
         fil = m.document.file_id
         text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+        text2 = None
+        if len(result["alert_chunks"]) > 0:
+            text2 = "За цими координатами помічено ворожу активність, бажано задефати:"
+            for link in result["alert_chunks"]:
+                text2 += f"\n{link}"
         for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
                 bot.send_document(chatid, fil,
                                   caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
+                if text2 is not None:
+                    bot.send_message(chatid, text2)
             except:
                 pass
-        if len(result["alert_chunks"]) == 0:
-            bot.send_message(ME, 'Без змін')
-        else:
-            text2 = "За цими координатами помічено ворожу активність:"
-            for link in result["alert_chunks"]:
-                text2 += f"\n{link}"
-            bot.send_message(ME, text2)
 
 
     except Exception as e:
@@ -404,7 +404,7 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    task = schedule.every(60).minutes.do(job_hour)
+    schedule.every(56).minutes.do(job_hour)
     thr = Thread(target=updater)
     thr.start()
     app.run(host='0.0.0.0', port=80, threaded=True)
