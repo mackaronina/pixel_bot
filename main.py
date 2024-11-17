@@ -14,7 +14,7 @@ import telebot
 from curl_cffi import requests
 from flask import Flask, request
 from sqlalchemy import create_engine
-from telebot import apihelper
+from telebot import apihelper, types
 
 ANONIM = 1087968824
 ME = 7258570440
@@ -25,6 +25,7 @@ APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 is_running = False
 old_chunks_diff = {}
 chunks_info = []
+blocked_messages = []
 updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 
 
@@ -64,6 +65,17 @@ def set_config_value(key, value):
     else:
         cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
     old_chunks_diff.clear()
+
+
+def answer_callback_query(call, txt, show=False):
+    try:
+        bot.answer_callback_query(call.id, text=txt, show_alert=show)
+    except:
+        if show:
+            try:
+                bot.send_message(call.from_user.id, text=txt)
+            except:
+                pass
 
 
 def fetch_me(url):
@@ -109,7 +121,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     tx = off_x + i % 256
                     ty = off_y + i // 256
                     bcl = b & 0x7F
-
+                    if bcl >= 128:
+                        bcl -= 128
                     if 0 <= bcl < len(colors):
                         map_color = colors[bcl]
                         if not (start_x <= tx < (start_x + width) and start_y <= ty < (
@@ -157,7 +170,8 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
     result = {
         "error": False,
         "total_size": 0,
-        "diff": 0
+        "diff": 0,
+        "change": 0
     }
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
@@ -182,6 +196,7 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
     for chunk in chunks_info:
         if chunk["key"] in old_chunks_diff:
             chunk["change"] = chunk["diff"] - old_chunks_diff[chunk["key"]]
+            result["change"] += chunk["change"]
         old_chunks_diff[chunk["key"]] = chunk["diff"]
     return result
 
@@ -246,14 +261,21 @@ def format_time(a):
 
 
 def generate_coords_text(sort_by):
+    is_empty = False
     if len(chunks_info) == 0:
         text = "Нічого не знайдено, сосі"
+        is_empty = True
     else:
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk[sort_by], reverse=True)
         if sorted_chunks[0]["diff"] <= 0:
             text = "Нічого не знайдено, сосі"
+            is_empty = True
         else:
-            text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
+            if not is_running:
+                text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
+            else:
+                text = f"Дані в процесі оновлення"
+            text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
             counter = 0
             for i, chunk in enumerate(sorted_chunks):
                 if chunk["diff"] <= 0:
@@ -264,7 +286,7 @@ def generate_coords_text(sort_by):
                     counter += 1
             if counter > 0:
                 text += f"\n\nНе показано точок: {counter}"
-    return text
+    return text, is_empty
 
 
 @bot.message_handler(commands=["map"])
@@ -343,8 +365,15 @@ def msg_shablon_info(message):
 
 @bot.message_handler(commands=["coords"])
 def msg_coords_info(message):
-    text = generate_coords_text("diff")
-    bot.reply_to(message, text)
+    text, is_empty = generate_coords_text("diff")
+    if not is_empty:
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        callback_button = types.InlineKeyboardButton(text='Змінити сортування',
+                                                     callback_data=f'sort {message.from_user.id} change')
+        keyboard.add(callback_button)
+        bot.reply_to(message, text, reply_markup=keyboard)
+    else:
+        bot.reply_to(message, text)
 
 
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
@@ -378,6 +407,46 @@ def msg_text(message):
                          reply_to_message_id=message.message_id)
     if message.chat.id == SERVICE_CHATID and message.animation is not None:
         bot.send_message(message.chat.id, str(message.animation.file_id), reply_to_message_id=message.message_id)
+
+
+def callback_process(call):
+    args = call.data.split()
+    cmd = args[0]
+    idk = int(args[1])
+    if call.from_user.id != idk:
+        answer_callback_query(call, "Це повідомлення не для тебе")
+        return
+    if cmd == "sort":
+        type_sort = args[2]
+        text, is_empty = generate_coords_text(type_sort)
+        answer_callback_query(call, "Ок чекай")
+        time.sleep(1)
+        if not is_empty:
+            if type_sort == "diff":
+                new_sort = "change"
+            else:
+                new_sort = "diff"
+            keyboard = types.InlineKeyboardMarkup(row_width=1)
+            callback_button = types.InlineKeyboardButton(text='Змінити сортування',
+                                                         callback_data=f'sort {idk} {new_sort}')
+            keyboard.add(callback_button)
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
+                                  reply_markup=keyboard)
+        else:
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_get(call):
+    key = f'{call.message.chat.id} {call.message.message_id}'
+    if key in blocked_messages:
+        answer_callback_query(call, "Почекай")
+        return
+    blocked_messages.append(key)
+    try:
+        callback_process(call)
+    finally:
+        blocked_messages.remove(key)
 
 
 @app.route('/' + TOKEN, methods=['POST'])
@@ -419,6 +488,7 @@ def job_hour():
         result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
         total_size = result["total_size"]
         diff = result["diff"]
+        change = result["change"]
         perc = (total_size - diff) / total_size
         img = PIL.Image.fromarray(img).convert('RGBA')
         img = send_pil(img)
@@ -426,6 +496,8 @@ def job_hour():
         m = bot.send_document(SERVICE_CHATID, img)
         fil = m.document.file_id
         text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+        if change != 0:
+            text += f"\nЦе значення змінилось на {format_change(change)}"
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
         if sorted_chunks[0]["change"] > 0:
