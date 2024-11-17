@@ -235,7 +235,36 @@ def format_change(a):
     if a > 0:
         return f"+{a}"
     else:
-        return a
+        return str(a)
+
+
+def format_time(a):
+    if a < 10:
+        return f"0{a}"
+    else:
+        return str(a)
+
+
+def generate_coords_text(sort_by):
+    if len(chunks_info) == 0:
+        text = "Нічого не знайдено, сосі"
+    else:
+        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk[sort_by], reverse=True)
+        if sorted_chunks[0]["diff"] <= 0:
+            text = "Нічого не знайдено, сосі"
+        else:
+            text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
+            counter = 0
+            for i, chunk in enumerate(sorted_chunks):
+                if chunk["diff"] <= 0:
+                    break
+                if i < 20:
+                    text += f"\n{i + 1}  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+                else:
+                    counter += 1
+            if counter > 0:
+                text += f"\n\nНе показано точок: {counter}"
+    return text
 
 
 @bot.message_handler(commands=["map"])
@@ -314,20 +343,7 @@ def msg_shablon_info(message):
 
 @bot.message_handler(commands=["coords"])
 def msg_coords_info(message):
-    if len(chunks_info) == 0:
-        text = "Нічого не знайдено, сосі"
-    else:
-        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["diff"], reverse=True)
-        if sorted_chunks[0]["diff"] <= 0:
-            text = "Нічого не знайдено, сосі"
-        else:
-            text = f"Дані оновлено о {updated_at.hour}:{updated_at.minute}\nЗа цими координатами знайдено пікселі не по шаблону:\n\nКоординати | Пікселі | Зміна"
-            for chunk in sorted_chunks:
-                if chunk["diff"] <= 0:
-                    break
-                if len(text + f"\n{chunk['pixel_link']} {chunk['diff']} {format_change(chunk['change'])}") > 4000:
-                    break
-                text += f"\n{chunk['pixel_link']} {chunk['diff']} {format_change(chunk['change'])}"
+    text = generate_coords_text("diff")
     bot.reply_to(message, text)
 
 
@@ -417,7 +433,7 @@ def job_hour():
             for i, chunk in enumerate(sorted_chunks):
                 if i == 3 or chunk["change"] <= 0:
                     break
-                text2 += f"\n{chunk['pixel_link']} +{chunk['change']}"
+                text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
         for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
