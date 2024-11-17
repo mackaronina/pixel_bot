@@ -259,7 +259,7 @@ def generate_coords_text(sort_by):
                 if chunk["diff"] <= 0:
                     break
                 if i < 20:
-                    text += f"\n{i + 1}  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+                    text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
                 else:
                     counter += 1
             if counter > 0:
