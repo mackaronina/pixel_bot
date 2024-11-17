@@ -267,7 +267,8 @@ def generate_coords_text(sort_by):
         is_empty = True
     else:
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk[sort_by], reverse=True)
-        if sorted_chunks[0]["diff"] <= 0:
+        sorted_chunks = [chunk for chunk in sorted_chunks if chunk["diff"] > 0]
+        if len(sorted_chunks) == 0:
             text = "Нічого не знайдено, сосі"
             is_empty = True
         else:
@@ -276,16 +277,12 @@ def generate_coords_text(sort_by):
             else:
                 text = f"Дані в процесі оновлення"
             text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
-            counter = 0
             for i, chunk in enumerate(sorted_chunks):
-                if chunk["diff"] <= 0:
+                if i == 20:
                     break
-                if i < 20:
-                    text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
-                else:
-                    counter += 1
-            if counter > 0:
-                text += f"\n\nНе показано точок: {counter}"
+                text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+            if len(sorted_chunks) - 20 > 0:
+                text += f"\n\nНе показано точок: {len(sorted_chunks) - 20}"
     return text, is_empty
 
 
@@ -413,7 +410,7 @@ def callback_process(call):
     args = call.data.split()
     cmd = args[0]
     idk = int(args[1])
-    if call.from_user.id != idk:
+    if call.from_user.id != idk and idk != ANONIM:
         answer_callback_query(call, "Це повідомлення не для тебе")
         return
     if cmd == "sort":
