@@ -3,6 +3,7 @@ import os
 import re
 import time
 import traceback
+from datetime import datetime
 from io import StringIO, BytesIO
 from threading import Thread
 
@@ -24,6 +25,7 @@ APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 is_running = False
 old_chunks_diff = {}
 chunks_info = []
+updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -178,7 +180,7 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
     if result["error"]:
         raise Exception("Failed to load area")
     for chunk in chunks_info:
-        if chunk["key"] in old_chunks_diff and chunk["diff"] - old_chunks_diff[chunk["key"]] > 0:
+        if chunk["key"] in old_chunks_diff:
             chunk["change"] = chunk["diff"] - old_chunks_diff[chunk["key"]]
         old_chunks_diff[chunk["key"]] = chunk["diff"]
     return result
@@ -227,6 +229,13 @@ def get_pil(fid):
 
 def extract_arg(arg):
     return arg.split()[1:]
+
+
+def format_change(a):
+    if a > 0:
+        return f"+{a}"
+    else:
+        return a
 
 
 @bot.message_handler(commands=["map"])
@@ -312,11 +321,13 @@ def msg_coords_info(message):
         if sorted_chunks[0]["diff"] <= 0:
             text = "Нічого не знайдено, сосі"
         else:
-            text = "Дані оновлюються кожну годину або після команди /map. За цими координатами знайдено пікселі не по шаблону:"
+            text = f"Дані оновлено о {updated_at.hour}:{updated_at.minute}\nЗа цими координатами знайдено пікселі не по шаблону:\n\nКоординати | Пікселі | Зміна"
             for chunk in sorted_chunks:
                 if chunk["diff"] <= 0:
                     break
-                text += f"\n{chunk['pixel_link']} {chunk['diff']}"
+                if len(text + f"\n{chunk['pixel_link']} {chunk['diff']} {format_change(chunk['change'])}") > 4000:
+                    break
+                text += f"\n{chunk['pixel_link']} {chunk['diff']} {format_change(chunk['change'])}"
     bot.reply_to(message, text)
 
 
@@ -374,7 +385,7 @@ def updater():
 
 
 def job_hour():
-    global is_running
+    global is_running, updated_at
     try:
         if is_running:
             return
@@ -388,6 +399,7 @@ def job_hour():
         shablon_h = img.shape[0]
         canvas = fetch_me(url)
         colors = [tuple(color) for color in canvas["colors"]]
+        updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
         total_size = result["total_size"]
         diff = result["diff"]
