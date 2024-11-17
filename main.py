@@ -283,7 +283,7 @@ def generate_telegraph():
 
 def generate_keyboard(sort_type, idk):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
-    callback_button = types.InlineKeyboardButton(text='Змінити сортування', callback_data=f'sort {idk} {sort_type}')
+    callback_button = types.InlineKeyboardButton(text='Сортування', callback_data=f'sort {idk} {sort_type}')
     if telegraph_url is not None:
         callback_button2 = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
         keyboard.add(callback_button, callback_button2)
@@ -315,7 +315,10 @@ def generate_coords_text(sort_by, limit=True):
             for i, chunk in enumerate(sorted_chunks):
                 if i == 20 and limit:
                     break
-                text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+                if limit:
+                    text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+                else:
+                    text += f"<br>{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
             if len(sorted_chunks) - 20 > 0 and limit:
                 text += f"\n\nНе показано точок: {len(sorted_chunks) - 20}"
     return text, is_empty
