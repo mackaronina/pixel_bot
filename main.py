@@ -15,6 +15,7 @@ from curl_cffi import requests
 from flask import Flask, request
 from sqlalchemy import create_engine
 from telebot import apihelper, types
+from telegraph import Telegraph
 
 ANONIM = 1087968824
 ME = 7258570440
@@ -27,6 +28,10 @@ old_chunks_diff = {}
 chunks_info = []
 blocked_messages = []
 updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
+telegraph_url = None
+
+telegraph = Telegraph()
+telegraph.create_account(short_name='Svinka')
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -260,7 +265,34 @@ def format_time(a):
         return str(a)
 
 
-def generate_coords_text(sort_by):
+def generate_telegraph():
+    global telegraph_url
+    text = "<p><h4>Сортування за кількістю пікселів:</h4>"
+    txt, _ = generate_coords_text("diff", False)
+    text += txt
+    text += "<h4>Сортування за зміною пікселів:</h4>"
+    txt, _ = generate_coords_text("change", False)
+    text += txt
+    text += "</p>"
+    response = telegraph.create_page(
+        'Список всіх координат',
+        html_content=text
+    )
+    telegraph_url = response['url']
+
+
+def generate_keyboard(sort_type, idk):
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    callback_button = types.InlineKeyboardButton(text='Змінити сортування', callback_data=f'sort {idk} {sort_type}')
+    if telegraph_url is not None:
+        callback_button2 = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
+        keyboard.add(callback_button, callback_button2)
+    else:
+        keyboard.add(callback_button)
+    return keyboard
+
+
+def generate_coords_text(sort_by, limit=True):
     is_empty = False
     if len(chunks_info) == 0:
         text = "Нічого не знайдено, сосі"
@@ -272,16 +304,19 @@ def generate_coords_text(sort_by):
             text = "Нічого не знайдено, сосі"
             is_empty = True
         else:
-            if not is_running:
-                text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
+            if limit:
+                if not is_running:
+                    text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
+                else:
+                    text = f"Дані в процесі оновлення"
+                text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
             else:
-                text = f"Дані в процесі оновлення"
-            text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
+                text = "№ | Координати | Пікселі | Зміна"
             for i, chunk in enumerate(sorted_chunks):
-                if i == 20:
+                if i == 20 and limit:
                     break
                 text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
-            if len(sorted_chunks) - 20 > 0:
+            if len(sorted_chunks) - 20 > 0 and limit:
                 text += f"\n\nНе показано точок: {len(sorted_chunks) - 20}"
     return text, is_empty
 
@@ -364,10 +399,7 @@ def msg_shablon_info(message):
 def msg_coords_info(message):
     text, is_empty = generate_coords_text("diff")
     if not is_empty:
-        keyboard = types.InlineKeyboardMarkup(row_width=1)
-        callback_button = types.InlineKeyboardButton(text='Змінити сортування',
-                                                     callback_data=f'sort {message.from_user.id} change')
-        keyboard.add(callback_button)
+        keyboard = generate_keyboard("change", message.from_user.id)
         bot.reply_to(message, text, reply_markup=keyboard)
     else:
         bot.reply_to(message, text)
@@ -423,10 +455,7 @@ def callback_process(call):
                 new_sort = "change"
             else:
                 new_sort = "diff"
-            keyboard = types.InlineKeyboardMarkup(row_width=1)
-            callback_button = types.InlineKeyboardButton(text='Змінити сортування',
-                                                         callback_data=f'sort {idk} {new_sort}')
-            keyboard.add(callback_button)
+            keyboard = generate_keyboard(new_sort, idk)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
                                   reply_markup=keyboard)
         else:
@@ -512,8 +541,7 @@ def job_hour():
                     bot.send_message(chatid, text2)
             except:
                 pass
-
-
+        generate_telegraph()
     except Exception as e:
         bot.send_message(ME, str(e))
     finally:
