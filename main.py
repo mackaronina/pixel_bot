@@ -126,8 +126,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     tx = off_x + i % 256
                     ty = off_y + i // 256
                     bcl = b & 0x7F
-                    if bcl >= 128:
-                        bcl -= 128
                     if 0 <= bcl < len(colors):
                         map_color = colors[bcl]
                         if not (start_x <= tx < (start_x + width) and start_y <= ty < (
@@ -151,6 +149,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         else:
                             img[x][y] = [0, 255, 0, 255]
                         result["total_size"] += 1
+                if chunk_diff > 10000:
+                    chunk_pixel = f'<a href="https://{base_url}/#d,{off_x + 128},{off_y + 128},10">{off_x + 128},{off_y + 128}</a>'
                 chunks_info.append({
                     "key": f"{off_x}_{off_y}",
                     "diff": chunk_diff,
@@ -267,7 +267,6 @@ def format_time(a):
 
 def generate_telegraph():
     global telegraph_url
-    telegraph_url = None
     text = "<p><h4>Сортування за кількістю пікселів:</h4>"
     txt, _ = generate_coords_text("diff", False)
     text += txt
@@ -510,11 +509,12 @@ def updater():
 
 
 def job_hour():
-    global is_running, updated_at
+    global is_running, updated_at, telegraph_url
     try:
         if is_running:
             return
         is_running = True
+        telegraph_url = None
         url = get_config_value("URL")
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
@@ -537,7 +537,7 @@ def job_hour():
         fil = m.document.file_id
         text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
         if change != 0:
-            text += f"\nЦе значення змінилось на {format_change(change)}"
+            text += f" ({format_change(change)})"
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
         if sorted_chunks[0]["change"] > 0:
