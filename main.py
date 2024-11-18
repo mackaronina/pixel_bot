@@ -267,6 +267,7 @@ def format_time(a):
 
 def generate_telegraph():
     global telegraph_url
+    telegraph_url = None
     text = "<p><h4>Сортування за кількістю пікселів:</h4>"
     txt, _ = generate_coords_text("diff", False)
     text += txt
@@ -274,11 +275,21 @@ def generate_telegraph():
     txt, _ = generate_coords_text("change", False)
     text += txt
     text += "</p>"
-    response = telegraph.create_page(
-        'Список всіх координат',
-        html_content=text
-    )
-    telegraph_url = response['url']
+    attempts = 0
+    while True:
+        try:
+            response = telegraph.create_page(
+                'Список всіх координат',
+                html_content=text
+            )
+            telegraph_url = response['url']
+            break
+        except Exception as e:
+            bot.send_message(ME, str(e))
+            if attempts > 5:
+                return
+            attempts += 1
+            time.sleep(3)
 
 
 def generate_keyboard(sort_type, idk):
