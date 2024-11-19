@@ -83,6 +83,16 @@ def answer_callback_query(call, txt, show=False):
                 pass
 
 
+def new_color(color):
+    R1, G1, B1 = color
+    R2, G2, B2 = (0, 255, 0)
+    Blend = 0.95
+    R = R1 + (R2 - R1) * Blend
+    G = G1 + (G2 - G1) * Blend
+    B = B1 + (B2 - B1) * Blend
+    return [R, G, B, 255]
+
+
 def fetch_me(url):
     url = f"https://{url}/api/me"
     with requests.Session() as session:
@@ -107,7 +117,7 @@ def fetch_me(url):
 
 
 def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-          height):
+          height, new_colors):
     url = f"{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
@@ -117,7 +127,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
-            if len(data) == 0:
+            if len(data) != 65536:
                 raise Exception("No data")
             else:
                 chunk_diff = 0
@@ -147,7 +157,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
-                            img[x][y] = [0, 255, 0, 255]
+                            img[x][y] = new_colors[colors.index((color[0], color[1], color[2]))]
                         result["total_size"] += 1
                 if chunk_diff > 10000:
                     chunk_pixel = f'<a href="https://{base_url}/#d,{off_x + 128},{off_y + 128},10">{off_x + 128},{off_y + 128}</a>'
@@ -170,7 +180,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
             time.sleep(3)
 
 
-def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img):
+def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors):
     chunks_info.clear()
     result = {
         "error": False,
@@ -191,7 +201,7 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
                 time.sleep(0.01)
                 t = Thread(target=fetch, args=(
                     session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                    height))
+                    height, new_colors))
                 t.start()
                 threads.append(t)
         for t in threads:
@@ -524,8 +534,9 @@ def job_hour():
         shablon_h = img.shape[0]
         canvas = fetch_me(url)
         colors = [tuple(color) for color in canvas["colors"]]
+        new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
-        result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img)
+        result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors)
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
