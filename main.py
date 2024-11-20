@@ -86,7 +86,7 @@ def answer_callback_query(call, txt, show=False):
 def new_color(color):
     R1, G1, B1 = color
     R2, G2, B2 = (0, 255, 0)
-    Blend = 0.9
+    Blend = 0.95
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
@@ -106,6 +106,25 @@ def fetch_me(url):
                     if canvas["ident"] == "d":
                         return canvas
                 return None
+            except:
+                if attempts > 5:
+                    print(f"Could not get {url} in five tries, cancelling")
+                    raise
+                attempts += 1
+                print(f"Failed to load {url}, trying again in 5s")
+                time.sleep(3)
+                pass
+
+
+def fetch_ranking(url):
+    url = f"https://{url}/ranking"
+    with requests.Session() as session:
+        attempts = 0
+        while True:
+            try:
+                resp = session.get(url, impersonate="chrome110")
+                data = resp.json()
+                return data["dailyCRanking"]
             except:
                 if attempts > 5:
                     print(f"Could not get {url} in five tries, cancelling")
@@ -511,11 +530,26 @@ def get_ok():
     return 'ok', 200
 
 
-def updater():
+def updater(scheduler):
     print('Поток запущен')
     while True:
-        schedule.run_pending()
+        scheduler.run_pending()
         time.sleep(1)
+
+
+def job_day():
+    try:
+        url = get_config_value("URL")
+        ranking = fetch_ranking(url)
+        for i, country in enumerate(ranking):
+            if country["cc"] == "ua":
+                text = f"За цей день хохли потужно натапали {country['px']} пікселів і зайняли {i + 1} місце в топі"
+                bot.send_message(SERVICE_CHATID, text)
+                bot.send_sticker(SERVICE_CHATID,
+                                 'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
+                break
+    except Exception as e:
+        bot.send_message(ME, str(e))
 
 
 def job_hour():
@@ -575,7 +609,10 @@ def job_hour():
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
-    schedule.every(60).minutes.do(job_hour)
-    thr = Thread(target=updater)
-    thr.start()
+    scheduler1 = schedule.Scheduler()
+    scheduler1.every(60).minutes.do(job_hour)
+    scheduler2 = schedule.Scheduler()
+    scheduler2.every().day.at("23:50").do(job_day)
+    Thread(target=updater, args=(scheduler1,)).start()
+    Thread(target=updater, args=(scheduler2,)).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
