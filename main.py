@@ -86,7 +86,7 @@ def answer_callback_query(call, txt, show=False):
 def new_color(color):
     R1, G1, B1 = color
     R2, G2, B2 = (0, 255, 0)
-    Blend = 0.95
+    Blend = 0.9
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
