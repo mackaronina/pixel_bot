@@ -411,11 +411,6 @@ def msg_coords(message):
     bot.reply_to(message, "Ок, все норм")
 
 
-@bot.message_handler(commands=["testo"])
-def msg_testo(message):
-    job_day()
-
-
 @bot.message_handler(commands=["set_shablon"])
 def msg_shablon(message):
     if not check_access(message):
@@ -549,9 +544,13 @@ def job_day():
         for i, country in enumerate(ranking):
             if country["cc"] == "ua":
                 text = f"За цей день хохли потужно натапали {country['px']} пікселів і зайняли {i + 1} місце в топі"
-                bot.send_message(SERVICE_CHATID, text)
-                bot.send_sticker(SERVICE_CHATID,
-                                 'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
+                for chatid in DB_CHATS:
+                    try:
+                        bot.send_message(chatid, text)
+                        bot.send_sticker(chatid,
+                                         'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
+                    except:
+                        pass
                 break
     except Exception as e:
         bot.send_message(ME, str(e))
