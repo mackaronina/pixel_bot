@@ -411,6 +411,11 @@ def msg_coords(message):
     bot.reply_to(message, "Ок, все норм")
 
 
+@bot.message_handler(commands=["testo"])
+def msg_testo(message):
+    job_day()
+
+
 @bot.message_handler(commands=["set_shablon"])
 def msg_shablon(message):
     if not check_access(message):
@@ -612,7 +617,7 @@ if __name__ == '__main__':
     scheduler1 = schedule.Scheduler()
     scheduler1.every(60).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
-    scheduler2.every().day.at("23:50").do(job_day)
+    scheduler2.every().day.at("23:00").do(job_day)
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
