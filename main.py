@@ -103,7 +103,7 @@ def fetch_me(url):
                 resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 canvases = data["canvases"]
-                channel_id = data["channels"].keys()[0]
+                channel_id = list(data["channels"].keys())[0]
                 for canvas in canvases.values():
                     if canvas["ident"] == "d":
                         return canvas, channel_id
