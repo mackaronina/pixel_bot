@@ -586,7 +586,12 @@ def job_minute():
             if (msg[0] == "event" and "Threat successfully defeated" in msg[1]
                     and msg[4] not in processed_messages and time.time() - msg[4] < 180):
                 processed_messages.append(msg[4])
-                bot.send_message(SERVICE_CHATID, f"На {url} почалося знижене кд, гойда!")
+                text = f"На {url} почалося знижене кд, гойда!"
+                for chatid in DB_CHATS:
+                    try:
+                        bot.send_message(chatid, text)
+                    except:
+                        pass
                 break
     except Exception as e:
         bot.send_message(ME, str(e))
