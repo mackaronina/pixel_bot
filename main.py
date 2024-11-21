@@ -27,6 +27,7 @@ is_running = False
 old_chunks_diff = {}
 chunks_info = []
 blocked_messages = []
+processed_messages = []
 updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 telegraph_url = None
 
@@ -102,9 +103,10 @@ def fetch_me(url):
                 resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 canvases = data["canvases"]
+                channel_id = data["channels"].keys()[0]
                 for canvas in canvases.values():
                     if canvas["ident"] == "d":
-                        return canvas
+                        return canvas, channel_id
                 return None
             except:
                 if attempts > 5:
@@ -135,9 +137,28 @@ def fetch_ranking(url):
                 pass
 
 
+def fetch_channel(url, channel_id):
+    url = f"https://{url}/api/chathistory?cid={channel_id}&limit=50"
+    with requests.Session() as session:
+        attempts = 0
+        while True:
+            try:
+                resp = session.get(url, impersonate="chrome110")
+                data = resp.json()
+                return data["history"]
+            except:
+                if attempts > 5:
+                    print(f"Could not get {url} in five tries, cancelling")
+                    raise
+                attempts += 1
+                print(f"Failed to load {url}, trying again in 5s")
+                time.sleep(3)
+                pass
+
+
 def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
           height, new_colors):
-    url = f"{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+    url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
@@ -556,6 +577,21 @@ def job_day():
         bot.send_message(ME, str(e))
 
 
+def job_minute():
+    try:
+        url = get_config_value("URL")
+        _, channel_id = fetch_me(url)
+        history = fetch_channel(url, channel_id)
+        for msg in history:
+            if (msg[0] == "event" and "Threat successfully defeated" in msg[1]
+                    and msg[4] not in processed_messages and time.time() - msg[4] < 180):
+                processed_messages.append(msg[4])
+                bot.send_message(SERVICE_CHATID, f"На {url} почалося знижене кд, гойда!")
+                break
+    except Exception as e:
+        bot.send_message(ME, str(e))
+
+
 def job_hour():
     global is_running, updated_at, telegraph_url
     try:
@@ -570,7 +606,7 @@ def job_hour():
         img = np.array(get_pil(file), dtype='uint8')
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
-        canvas = fetch_me(url)
+        canvas, _ = fetch_me(url)
         colors = [tuple(color) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
@@ -617,6 +653,9 @@ if __name__ == '__main__':
     scheduler1.every(60).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
     scheduler2.every().day.at("23:00").do(job_day)
+    scheduler3 = schedule.Scheduler()
+    scheduler3.every(1).minutes.do(job_minute)
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
+    Thread(target=updater, args=(scheduler3,)).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
