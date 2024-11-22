@@ -564,7 +564,8 @@ def job_day():
         ranking = fetch_ranking(url)
         for i, country in enumerate(ranking):
             if country["cc"] == "ua":
-                text = f"За цей день хохли потужно натапали <b>{country['px']}</b> пікселів і зайняли <b>{i + 1}</b> місце в топі"
+                px = int(country['px'])
+                text = f"За цей день хохли потужно натапали <b>{px:,}</b> пікселів і зайняли <b>{i + 1}</b> місце в топі"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
