@@ -564,7 +564,7 @@ def job_day():
         ranking = fetch_ranking(url)
         for i, country in enumerate(ranking):
             if country["cc"] == "ua":
-                text = f"За цей день хохли потужно натапали {country['px']} пікселів і зайняли {i + 1} місце в топі"
+                text = f"За цей день хохли потужно натапали <b>{country['px']}</b> пікселів і зайняли <b>{i + 1}</b> місце в топі"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
@@ -586,7 +586,7 @@ def job_minute():
             if (msg[0] == "event" and "Threat successfully defeated" in msg[1]
                     and msg[4] not in processed_messages and time.time() - msg[4] < 180):
                 processed_messages.append(msg[4])
-                text = f"На {url} почалося знижене кд, гойда!"
+                text = f"<b>Почалося знижене кд, гойда!</b>"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
