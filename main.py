@@ -94,6 +94,10 @@ def new_color(color):
     return [R, G, B, 255]
 
 
+def link(url, x, y, zoom):
+    return f'<a href="https://{url}/#d,{x},{y},{zoom}">{x},{y}</a>'
+
+
 def fetch_me(url):
     url = f"https://{url}/api/me"
     with requests.Session() as session:
@@ -193,14 +197,14 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             result["diff"] += 1
                             if chunk_diff == 0:
-                                chunk_pixel = f'<a href="https://{base_url}/#d,{tx},{ty},25">{tx},{ty}</a>'
+                                chunk_pixel = link(base_url, tx, ty, 25)
                             chunk_diff += 1
                             img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
                         else:
                             img[x][y] = new_colors[colors.index((color[0], color[1], color[2]))]
                         result["total_size"] += 1
                 if chunk_diff > 10000:
-                    chunk_pixel = f'<a href="https://{base_url}/#d,{off_x + 128},{off_y + 128},10">{off_x + 128},{off_y + 128}</a>'
+                    chunk_pixel = link(base_url, off_x + 128, off_y + 128, 10)
                 chunks_info.append({
                     "key": f"{off_x}_{off_y}",
                     "diff": chunk_diff,
@@ -562,10 +566,13 @@ def job_day():
     try:
         url = get_config_value("URL")
         ranking = fetch_ranking(url)
+        first = None
         for i, country in enumerate(ranking):
             if country["cc"] == "ua":
                 px = int(country['px'])
                 text = f"За цей день хохли потужно натапали <b>{px:,}</b> пікселів і зайняли <b>{i + 1}</b> місце в топі"
+                if first is not None:
+                    text += f". Перше місце - <b>{first}</b>"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
@@ -574,26 +581,73 @@ def job_day():
                     except:
                         pass
                 break
+            elif i == 0:
+                first = country["cc"]
     except Exception as e:
         bot.send_message(ME, str(e))
 
 
+def check_rollback(msg, img, url, shablon_x, shablon_y):
+    if "rolled back" in msg[1]:
+        typetext = "Тип ролбеку: відкат\n"
+        result = re.findall(r'\+\*[1234567890-]*\*\+', msg[1])
+        x1 = int(result[0].replace('+', '').replace('*', ''))
+        y1 = int(result[1].replace('+', '').replace('*', ''))
+        x2 = int(result[2].replace('+', '').replace('*', ''))
+        y2 = int(result[3].replace('+', '').replace('*', ''))
+    elif "loaded image" in msg[1]:
+        typetext = "Тип ролбеку: вставлено зображення\n"
+        result = re.findall(r'\+\*[1234567890-]*\*\+', msg[1])
+        x1 = int(result[0].replace('+', '').replace('*', ''))
+        y1 = int(result[1].replace('+', '').replace('*', ''))
+        x2 = int(result[2].replace('+', '').replace('*', ''))
+        y2 = int(result[3].replace('+', '').replace('*', ''))
+    elif "Canvas Cleaner" in msg[1]:
+        typetext = "Тип ролбеку: білий квадрат\n"
+        result = re.findall(r',[1234567890-]*', msg[1])
+        x1 = int(result[0].replace(',', ''))
+        y1 = int(result[1].replace(',', ''))
+        x2 = int(result[2].replace(',', ''))
+        y2 = int(result[3].replace(',', ''))
+    else:
+        return
+    shablon_w = img.shape[1]
+    shablon_h = img.shape[0]
+    rollback_x = int((x1 + x2) / 2)
+    rollback_y = int((y1 + y2) / 2)
+    if shablon_x <= rollback_x <= shablon_x + shablon_w and shablon_y <= rollback_y <= shablon_y + shablon_h:
+        if img[rollback_y - shablon_y][rollback_x - shablon_x][3] == 255:
+            text = f'На території України помічений ролбек\n{typetext}{link(url, rollback_x, rollback_y, 10)}'
+            bot.send_message(SERVICE_CHATID, text)
+
+
 def job_minute():
     try:
+        while len(processed_messages) > 200:
+            processed_messages.pop(0)
         url = get_config_value("URL")
+        file = get_config_value("FILE")
+        shablon_x = int(get_config_value("X"))
+        shablon_y = int(get_config_value("Y"))
         _, channel_id = fetch_me(url)
         history = fetch_channel(url, channel_id)
+        img = None
         for msg in history:
-            if (msg[0] == "event" and "Threat successfully defeated" in msg[1]
-                    and msg[4] not in processed_messages and time.time() - msg[4] < 180):
-                processed_messages.append(msg[4])
+            if msg[4] in processed_messages or time.time() - msg[4] > 180:
+                continue
+            if msg[0] == "event" and "Threat successfully defeated" in msg[1]:
                 text = f"<b>Почалося знижене кд, гойда!</b>"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
                     except:
                         pass
-                break
+            elif msg[0] == "info" and (
+                    "Canvas Cleaner" in msg[1] or "loaded image" in msg[1] or "rolled back" in msg[1]):
+                if img is None:
+                    img = np.array(get_pil(file), dtype='uint8')
+                check_rollback(msg, img, url, shablon_x, shablon_y)
+            processed_messages.append(msg[4])
     except Exception as e:
         bot.send_message(ME, str(e))
 
