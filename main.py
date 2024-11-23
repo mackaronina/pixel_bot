@@ -84,14 +84,18 @@ def answer_callback_query(call, txt, show=False):
                 pass
 
 
+def check_in(array_to_check, list_np_arrays):
+    return np.any(np.all(array_to_check == list_np_arrays, axis=1))
+
+
 def new_color(color):
-    R1, G1, B1 = color
+    R1, G1, B1, _ = color
     R2, G2, B2 = (0, 255, 0)
     Blend = 0.95
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
-    return [R, G, B, 255]
+    return np.array([R, G, B, 255], dtype='uint8')
 
 
 def link(url, x, y, zoom):
@@ -175,7 +179,9 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                 raise Exception("No data")
             else:
                 chunk_diff = 0
+                chunk_size = 0
                 chunk_pixel = None
+
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
@@ -190,21 +196,23 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if img[x][y][3] < 255:
                             img[x][y][3] = 0
                             continue
-                        if (img[x][y][0], img[x][y][1], img[x][y][2]) not in colors:
+                        if not check_in(img[x][y], colors):
                             color = convert_color(img[x][y], colors)
                         else:
                             color = img[x][y]
-                        if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
-                            result["diff"] += 1
+                        if not np.all(color == map_color):
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
                             chunk_diff += 1
-                            img[x][y] = [map_color[0], map_color[1], map_color[2], 255]
+                            img[x][y] = map_color
                         else:
-                            img[x][y] = new_colors[colors.index((color[0], color[1], color[2]))]
-                        result["total_size"] += 1
+                            img[x][y] = new_colors[bcl]
+                        chunk_size += 1
+
                 if chunk_diff > 10000:
                     chunk_pixel = link(base_url, off_x + 128, off_y + 128, 10)
+                result["diff"] += chunk_diff
+                result["total_size"] += chunk_size
                 chunks_info.append({
                     "key": f"{off_x}_{off_y}",
                     "diff": chunk_diff,
@@ -589,21 +597,21 @@ def job_day():
 
 def check_rollback(msg, img, url, shablon_x, shablon_y):
     if "rolled back" in msg[1]:
-        typetext = "Тип ролбеку: відкат\n"
+        typetext = "Тип: відкат\n"
         result = re.findall(r'\+\*[1234567890-]*\*\+', msg[1])
         x1 = int(result[0].replace('+', '').replace('*', ''))
         y1 = int(result[1].replace('+', '').replace('*', ''))
         x2 = int(result[2].replace('+', '').replace('*', ''))
         y2 = int(result[3].replace('+', '').replace('*', ''))
     elif "loaded image" in msg[1]:
-        typetext = "Тип ролбеку: вставлено зображення\n"
+        typetext = "Тип: вставлено зображення\n"
         result = re.findall(r'\+\*[1234567890-]*\*\+', msg[1])
         x1 = int(result[0].replace('+', '').replace('*', ''))
         y1 = int(result[1].replace('+', '').replace('*', ''))
         x2 = int(result[2].replace('+', '').replace('*', ''))
         y2 = int(result[3].replace('+', '').replace('*', ''))
     elif "Canvas Cleaner" in msg[1]:
-        typetext = "Тип ролбеку: білий квадрат\n"
+        typetext = "Тип: білий квадрат\n"
         result = re.findall(r',[1234567890-]*', msg[1])
         x1 = int(result[0].replace(',', ''))
         y1 = int(result[1].replace(',', ''))
@@ -617,8 +625,12 @@ def check_rollback(msg, img, url, shablon_x, shablon_y):
     rollback_y = int((y1 + y2) / 2)
     if shablon_x <= rollback_x <= shablon_x + shablon_w and shablon_y <= rollback_y <= shablon_y + shablon_h:
         if img[rollback_y - shablon_y][rollback_x - shablon_x][3] == 255:
-            text = f'На території України помічений ролбек\n{typetext}{link(url, rollback_x, rollback_y, 10)}'
-            bot.send_message(SERVICE_CHATID, text)
+            text = f'<b>На території України помічений ролбек</b>\n{typetext}{link(url, rollback_x, rollback_y, 10)}'
+            for chatid in DB_CHATS:
+                try:
+                    bot.send_message(chatid, text)
+                except:
+                    pass
 
 
 def job_minute():
@@ -667,7 +679,7 @@ def job_hour():
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url)
-        colors = [tuple(color) for color in canvas["colors"]]
+        colors = [np.array([color[0], color[1], color[2], 255], dtype='uint8') for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors)
@@ -680,9 +692,9 @@ def job_hour():
         bot.send_message(ME, 'abba2')
         m = bot.send_document(SERVICE_CHATID, img)
         fil = m.document.file_id
-        text = f"На {url} Україна співпадає з шаблоном на {to_fixed(perc * 100, 2)} %\nПікселів не за шаблоном: {diff}"
+        text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
         if change != 0:
-            text += f" ({format_change(change)})"
+            text += f" <b>({format_change(change)})</b>"
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
         if sorted_chunks[0]["change"] > 0:
@@ -691,7 +703,7 @@ def job_hour():
                 if i == 3 or chunk["change"] <= 0:
                     break
                 text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
-        for chatid in DB_CHATS:
+        for chatid in [SERVICE_CHATID]:
             try:
                 bot.send_message(chatid, text)
                 bot.send_document(chatid, fil,
