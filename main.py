@@ -172,8 +172,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
     attempts = 0
     while True:
         try:
-            a = 0
-            b = 0
+            a_param = 0
+            b_param = 0
             rsp = sess.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
@@ -200,10 +200,10 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if img[x][y][3] < 255:
                             img[x][y][3] = 0
                             continue
-                        a += 1
+                        a_param += 1
                         if not check_in(img[x][y], colors):
                             color = convert_color(img[x][y], colors)
-                            b += 1
+                            b_param += 1
                         else:
                             color = img[x][y]
                         if not np.all(color == map_color):
@@ -225,7 +225,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     "pixel_link": chunk_pixel,
                     "change": 0
                 })
-                bot.send_message(ME, f"end thread {a} {b}")
+                bot.send_message(ME, f"end thread {a_param} {b_param}")
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
