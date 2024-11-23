@@ -85,7 +85,10 @@ def answer_callback_query(call, txt, show=False):
 
 
 def check_in(array_to_check, list_np_arrays):
-    return np.any(np.all(array_to_check == list_np_arrays, axis=1))
+    for array in list_np_arrays:
+        if array_to_check[0] == array[0] and array_to_check[1] == array[1] and array_to_check[2] == array[2]:
+            return True
+    return False
 
 
 def new_color(color):
@@ -97,7 +100,7 @@ def new_color(color):
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
-    return [R, G, B, 255]
+    return np.array([R, G, B, 255], dtype="uint8")
 
 
 def link(url, x, y, zoom):
@@ -120,10 +123,8 @@ def fetch_me(url):
                 return None
             except:
                 if attempts > 5:
-                    print(f"Could not get {url} in five tries, cancelling")
                     raise
                 attempts += 1
-                print(f"Failed to load {url}, trying again in 5s")
                 time.sleep(3)
                 pass
 
@@ -139,10 +140,8 @@ def fetch_ranking(url):
                 return data["dailyCRanking"]
             except:
                 if attempts > 5:
-                    print(f"Could not get {url} in five tries, cancelling")
                     raise
                 attempts += 1
-                print(f"Failed to load {url}, trying again in 5s")
                 time.sleep(3)
                 pass
 
@@ -158,10 +157,8 @@ def fetch_channel(url, channel_id):
                 return data["history"]
             except:
                 if attempts > 5:
-                    print(f"Could not get {url} in five tries, cancelling")
                     raise
                 attempts += 1
-                print(f"Failed to load {url}, trying again in 5s")
                 time.sleep(3)
                 pass
 
@@ -196,13 +193,12 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         x = ty - start_y
                         y = tx - start_x
                         if img[x][y][3] < 255:
-                            img[x][y][3] = 0
                             continue
                         if not check_in(img[x][y], colors):
                             color = convert_color(img[x][y], colors)
                         else:
                             color = img[x][y]
-                        if not np.all(color == map_color):
+                        if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
                             chunk_diff += 1
@@ -226,11 +222,9 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
             bot.send_message(ME, str(e))
             bot.send_message(ME, str(url))
             if attempts > 5:
-                print(f"Could not get {url} in five tries, cancelling")
                 result["error"] = True
                 return
             attempts += 1
-            print(f"Failed to load {url}, trying again in 3s")
             time.sleep(3)
 
 
@@ -567,7 +561,6 @@ def get_ok():
 
 
 def updater(scheduler):
-    print('Поток запущен')
     while True:
         scheduler.run_pending()
         time.sleep(1)
@@ -682,7 +675,7 @@ def job_hour():
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url)
-        colors = [[color[0], color[1], color[2], 255] for color in canvas["colors"]]
+        colors = [np.array([color[0], color[1], color[2], 255], dtype="uint8") for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors)
@@ -706,7 +699,7 @@ def job_hour():
                 if i == 3 or chunk["change"] <= 0:
                     break
                 text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
-        for chatid in [SERVICE_CHATID]:
+        for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
                 bot.send_document(chatid, fil,
