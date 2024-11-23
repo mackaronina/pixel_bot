@@ -274,7 +274,8 @@ def convert_color(color, colors):
     dists = []
     for c in colors:
         d = math.sqrt(
-            math.pow(int(color[0]) - c[0], 2) + math.pow(int(color[1]) - c[1], 2) + math.pow(int(color[2]) - c[2], 2))
+            math.pow(int(color[0]) - int(c[0]), 2) + math.pow(int(color[1]) - int(c[1]), 2) + math.pow(
+                int(color[2]) - int(c[2]), 2))
         dists.append(d)
     return colors[dists.index(min(dists))]
 
