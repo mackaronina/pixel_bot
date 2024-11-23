@@ -30,6 +30,7 @@ blocked_messages = []
 processed_messages = []
 updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 telegraph_url = None
+global_img = None
 
 telegraph = Telegraph()
 telegraph.create_account(short_name='Svinka')
@@ -591,7 +592,9 @@ def job_day():
         bot.send_message(ME, str(e))
 
 
-def check_rollback(msg, img, url, shablon_x, shablon_y):
+def check_rollback(msg, url, shablon_x, shablon_y):
+    if global_img is None:
+        return
     if "rolled back" in msg[1]:
         typetext = "Тип: відкат\n"
         result = re.findall(r'\+\*[1234567890-]*\*\+', msg[1])
@@ -615,12 +618,12 @@ def check_rollback(msg, img, url, shablon_x, shablon_y):
         y2 = int(result[3].replace(',', ''))
     else:
         return
-    shablon_w = img.shape[1]
-    shablon_h = img.shape[0]
+    shablon_w = global_img.shape[1]
+    shablon_h = global_img.shape[0]
     rollback_x = int((x1 + x2) / 2)
     rollback_y = int((y1 + y2) / 2)
     if shablon_x <= rollback_x <= shablon_x + shablon_w and shablon_y <= rollback_y <= shablon_y + shablon_h:
-        if img[rollback_y - shablon_y][rollback_x - shablon_x][3] == 255:
+        if global_img[rollback_y - shablon_y][rollback_x - shablon_x][3] == 255:
             text = f'<b>На території України помічений ролбек</b>\n{typetext}{link(url, rollback_x, rollback_y, 10)}'
             for chatid in DB_CHATS:
                 try:
@@ -634,12 +637,10 @@ def job_minute():
         while len(processed_messages) > 200:
             processed_messages.pop(0)
         url = get_config_value("URL")
-        file = get_config_value("FILE")
         shablon_x = int(get_config_value("X"))
         shablon_y = int(get_config_value("Y"))
         _, channel_id = fetch_me(url)
         history = fetch_channel(url, channel_id)
-        img = None
         for msg in history:
             if msg[4] in processed_messages or time.time() - msg[4] > 180:
                 continue
@@ -652,16 +653,14 @@ def job_minute():
                         pass
             elif msg[0] == "info" and (
                     "Canvas Cleaner" in msg[1] or "loaded image" in msg[1] or "rolled back" in msg[1]):
-                if img is None:
-                    img = np.array(get_pil(file), dtype='uint8')
-                check_rollback(msg, img, url, shablon_x, shablon_y)
+                check_rollback(msg, url, shablon_x, shablon_y)
             processed_messages.append(msg[4])
     except Exception as e:
         bot.send_message(ME, str(e))
 
 
 def job_hour():
-    global is_running, updated_at, telegraph_url
+    global is_running, updated_at, telegraph_url, global_img
     try:
         if is_running:
             return
@@ -672,6 +671,7 @@ def job_hour():
         y = int(get_config_value("Y"))
         file = get_config_value("FILE")
         img = np.array(get_pil(file), dtype='uint8')
+        global_img = img
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url)
