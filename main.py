@@ -97,7 +97,7 @@ def new_color(color):
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
-    return np.array([R, G, B, 255], dtype='uint8')
+    return [R, G, B, 255]
 
 
 def link(url, x, y, zoom):
@@ -172,8 +172,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
     attempts = 0
     while True:
         try:
-            a_param = 0
-            b_param = 0
             rsp = sess.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
@@ -200,10 +198,8 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         if img[x][y][3] < 255:
                             img[x][y][3] = 0
                             continue
-                        a_param += 1
                         if not check_in(img[x][y], colors):
                             color = convert_color(img[x][y], colors)
-                            b_param += 1
                         else:
                             color = img[x][y]
                         if not np.all(color == map_color):
@@ -225,7 +221,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     "pixel_link": chunk_pixel,
                     "change": 0
                 })
-                bot.send_message(ME, f"end thread {a_param} {b_param}")
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -687,7 +682,7 @@ def job_hour():
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url)
-        colors = [np.array([color[0], color[1], color[2], 255], dtype='uint8') for color in canvas["colors"]]
+        colors = [[color[0], color[1], color[2], 255] for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors)
