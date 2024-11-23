@@ -89,7 +89,9 @@ def check_in(array_to_check, list_np_arrays):
 
 
 def new_color(color):
-    R1, G1, B1, _ = color
+    R1 = int(color[0])
+    G1 = int(color[1])
+    B1 = int(color[2])
     R2, G2, B2 = (0, 255, 0)
     Blend = 0.95
     R = R1 + (R2 - R1) * Blend
