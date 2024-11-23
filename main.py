@@ -221,6 +221,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     "pixel_link": chunk_pixel,
                     "change": 0
                 })
+                bot.send_message(ME, "end thread")
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
