@@ -87,7 +87,9 @@ def answer_callback_query(call, txt, show=False):
 
 def check_in(array_to_check, list_np_arrays):
     for array in list_np_arrays:
-        if array_to_check[0] == array[0] and array_to_check[1] == array[1] and array_to_check[2] == array[2]:
+        if array_to_check[0] != array[0] or array_to_check[1] != array[1] or array_to_check[2] != array[2]:
+            continue
+        else:
             return True
     return False
 
@@ -269,8 +271,8 @@ def convert_color(color, colors):
     dists = []
     for c in colors:
         d = math.sqrt(
-            math.pow(int(color[0]) - int(c[0]), 2) + math.pow(int(color[1]) - int(c[1]), 2) + math.pow(
-                int(color[2]) - int(c[2]), 2))
+            (int(color[0]) - int(c[0])) ** 2 + (int(color[1]) - int(c[1])) ** 2 + (int(color[2]) - int(c[2])) ** 2
+        )
         dists.append(d)
     return colors[dists.index(min(dists))]
 
