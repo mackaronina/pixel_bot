@@ -1,3 +1,4 @@
+import asyncio
 import math
 import os
 import re
@@ -165,13 +166,13 @@ def fetch_channel(url, channel_id):
                 pass
 
 
-def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-          height, new_colors):
+async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
+                height, new_colors):
     url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
-            rsp = sess.get(url, impersonate="chrome110")
+            rsp = await sess.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -188,7 +189,6 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     ty = off_y + i // 256
                     bcl = b & 0x7F
                     if 0 <= bcl < len(colors):
-                        map_color = colors[bcl]
                         if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
                             continue
                         x = ty - start_y
@@ -196,6 +196,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         color = img[x][y]
                         if color[3] < 255:
                             continue
+                        map_color = colors[bcl]
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
@@ -223,10 +224,10 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                 result["error"] = True
                 return
             attempts += 1
-            time.sleep(3)
+            await asyncio.sleep(3)
 
 
-def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors):
+async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors):
     chunks_info.clear()
     result = {
         "error": False,
@@ -240,18 +241,14 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
     wc = (start_x + width - offset) // 256
     yc = (start_y - offset) // 256
     hc = (start_y + height - offset) // 256
-    with requests.Session() as session:
+    async with requests.AsyncSession() as session:
         threads = []
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
-                time.sleep(0.01)
-                t = Thread(target=fetch, args=(
-                    session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                    height, new_colors))
-                t.start()
-                threads.append(t)
-        for t in threads:
-            t.join()
+                threads.append(
+                    fetch(session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
+                          height, new_colors))
+        await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
     for chunk in chunks_info:
@@ -664,7 +661,7 @@ def job_hour():
         colors = [np.array([color[0], color[1], color[2], 255], dtype="uint8") for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
-        result = get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors)
+        result = asyncio.run(get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
