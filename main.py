@@ -189,14 +189,13 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                     bcl = b & 0x7F
                     if 0 <= bcl < len(colors):
                         map_color = colors[bcl]
-                        if not (start_x <= tx < (start_x + width) and start_y <= ty < (
-                                start_y + height)):
+                        if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
                             continue
                         x = ty - start_y
                         y = tx - start_x
-                        if img[x][y][3] < 255:
-                            continue
                         color = img[x][y]
+                        if color[3] < 255:
+                            continue
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
