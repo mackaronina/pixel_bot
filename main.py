@@ -98,7 +98,7 @@ def new_color(color):
     G1 = int(color[1])
     B1 = int(color[2])
     R2, G2, B2 = (0, 255, 0)
-    Blend = 0.95
+    Blend = 0.9
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
