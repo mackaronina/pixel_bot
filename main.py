@@ -196,10 +196,7 @@ def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, 
                         y = tx - start_x
                         if img[x][y][3] < 255:
                             continue
-                        if not check_in(img[x][y], colors):
-                            color = convert_color(img[x][y], colors)
-                        else:
-                            color = img[x][y]
+                        color = img[x][y]
                         if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
@@ -267,6 +264,10 @@ def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, ur
 
 
 def convert_color(color, colors):
+    if color[3] < 255:
+        return color
+    if check_in(color, colors):
+        return color
     dists = []
     for c in colors:
         d = math.sqrt(
@@ -419,6 +420,7 @@ def msg_site(message):
         bot.reply_to(message, "Не вдалось зв'єднатись, сосі")
         return
     set_config_value("URL", args[0])
+    set_config_value("CROPPED", False)
     bot.reply_to(message, "Ок, все норм")
 
 
@@ -623,11 +625,19 @@ def shablon_crop():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     file = get_config_value("FILE")
+    url = get_config_value("URL")
     img = get_pil(file)
     box = img.getbbox()
     img = img.crop(box)
     x += box[0]
     y += box[1]
+
+    img = np.array(img, dtype='uint8')
+    canvas, _ = fetch_me(url)
+    colors = [np.array([color[0], color[1], color[2], 255], dtype="uint8") for color in canvas["colors"]]
+    img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
+    img = PIL.Image.fromarray(img).convert('RGBA')
+
     m = bot.send_document(SERVICE_CHATID, send_pil(img))
     fil = m.document.file_id
     set_config_value("X", x)
