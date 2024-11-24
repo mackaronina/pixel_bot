@@ -10,6 +10,7 @@ from threading import Thread
 
 import PIL.Image
 import numpy as np
+import pycountry
 import schedule
 import telebot
 from curl_cffi import requests
@@ -577,7 +578,11 @@ def job_day():
                 px = int(country['px'])
                 text = f"За цей день хохли потужно натапали <b>{px:,}</b> пікселів і зайняли <b>{i + 1}</b> місце в топі"
                 if first is not None:
-                    text += f". Перше місце - <b>{first}</b>"
+                    country = pycountry.countries.get(alpha_2=first)
+                    if country is not None:
+                        text += f". Перше місце - {country.flag}"
+                    else:
+                        text += f". Перше місце - <b>{first}</b>"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)

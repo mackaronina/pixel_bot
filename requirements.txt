@@ -8,3 +8,4 @@ SQLAlchemy==1.4.48
 psycopg2==2.9.9
 PyMySQL==1.1.0
 telegraph==2.2.0
+pycountry==24.6.1
