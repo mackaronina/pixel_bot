@@ -456,6 +456,7 @@ def msg_shablon(message):
         bot.reply_to(message, "Файл не у форматі png, сосі")
         return
     set_config_value("FILE", repl.document.file_id)
+    set_config_value("CROPPED", False)
     bot.reply_to(message, "Ок, все норм")
 
 
@@ -595,7 +596,7 @@ def job_day():
 
 def job_minute():
     try:
-        while len(processed_messages) > 200:
+        while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
         _, channel_id = fetch_me(url)
@@ -615,6 +616,26 @@ def job_minute():
         bot.send_message(ME, str(e))
 
 
+def shablon_crop():
+    cropped = bool(get_config_value("CROPPED"))
+    if cropped:
+        return
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
+    file = get_config_value("FILE")
+    img = get_pil(file)
+    box = img.getbbox()
+    img = img.crop(box)
+    x += box[0]
+    y += box[1]
+    m = bot.send_document(SERVICE_CHATID, send_pil(img))
+    fil = m.document.file_id
+    set_config_value("X", x)
+    set_config_value("Y", y)
+    set_config_value("FILE", fil)
+    set_config_value("CROPPED", True)
+
+
 def job_hour():
     global is_running, updated_at, telegraph_url
     try:
@@ -622,6 +643,7 @@ def job_hour():
             return
         is_running = True
         telegraph_url = None
+        shablon_crop()
         url = get_config_value("URL")
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
