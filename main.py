@@ -617,8 +617,8 @@ def job_minute():
 
 
 def shablon_crop():
-    cropped = bool(get_config_value("CROPPED"))
-    if cropped == "True":
+    cropped = eval(get_config_value("CROPPED"))
+    if cropped:
         return
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
