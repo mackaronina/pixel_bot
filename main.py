@@ -194,7 +194,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                             continue
                         x = ty - start_y
                         y = tx - start_x
-                        color = img[x][y]
+                        color = img[x, y]
                         if color[3] < 255:
                             continue
                         map_color = colors[bcl]
@@ -202,9 +202,9 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                             if chunk_diff == 0:
                                 chunk_pixel = link(base_url, tx, ty, 25)
                             chunk_diff += 1
-                            img[x][y] = map_color
+                            img[x, y] = map_color
                         else:
-                            img[x][y] = new_colors[bcl]
+                            img[x, y] = new_colors[bcl]
                         chunk_size += 1
 
                 if chunk_diff > 10000:
