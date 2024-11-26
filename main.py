@@ -535,6 +535,8 @@ def msg_coords_info(message):
 
 @bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
 def msg_text(message):
+    if message.chat.id not in DB_CHATS:
+        return
     if message.text is not None:
         handle_text(message, message.text)
     elif message.caption is not None:
@@ -547,8 +549,8 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
-    elif message.chat.id == SERVICE_CHATID and re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*',
-                                                         low):
+    elif re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*',
+                   low):
         try:
             parselink = re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*', low)[0]
             site = parselink.split('/')[0]
