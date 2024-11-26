@@ -104,7 +104,7 @@ def new_color(color):
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
-    return np.array([R, G, B, 255], dtype="uint8")
+    return np.array([R, G, B, 255], dtype=np.uint8)
 
 
 def link(url, x, y, zoom):
@@ -121,8 +121,9 @@ def fetch_me(url):
                 data = resp.json()
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
-                for canvas in canvases.values():
+                for key, canvas in canvases.items():
                     if canvas["ident"] == "d":
+                        canvas["id"] = key
                         return canvas, channel_id
                 return None
             except:
@@ -258,6 +259,59 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
             result["change"] += chunk["change"]
         old_chunks_diff[chunk["key"]] = chunk["diff"]
     return result
+
+
+async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height, colors, url):
+    canvasoffset = math.pow(canvas_size, 0.5)
+    offset = int(-canvasoffset * canvasoffset / 2)
+    xc = (start_x - offset) // 256
+    wc = (start_x + width - offset) // 256
+    yc = (start_y - offset) // 256
+    hc = (start_y + height - offset) // 256
+    img = np.zeros((height, width, 3), dtype=np.uint8)
+    async with requests.AsyncSession() as session:
+        threads = []
+        for iy in range(yc, hc + 1):
+            for ix in range(xc, wc + 1):
+                threads.append(
+                    fetch_small(session, canvas_id, canvasoffset, ix, iy, colors, url, img, start_x, start_y, width,
+                                height))
+        await asyncio.gather(*threads)
+    return img
+
+
+async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
+                      height):
+    url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+    attempts = 0
+    while True:
+        try:
+            rsp = await sess.get(url, impersonate="chrome110")
+            data = rsp.content
+            offset = int(-canvasoffset * canvasoffset / 2)
+            off_x = ix * 256 + offset
+            off_y = iy * 256 + offset
+            if len(data) != 65536:
+                raise Exception("No data")
+            else:
+                for i, b in enumerate(data):
+                    tx = off_x + i % 256
+                    ty = off_y + i // 256
+                    bcl = b & 0x7F
+                    if 0 <= bcl < len(colors):
+                        if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                            continue
+                        x = ty - start_y
+                        y = tx - start_x
+                        img[x, y] = colors[bcl]
+                break
+        except Exception as e:
+            bot.send_message(ME, str(e))
+            bot.send_message(ME, str(url))
+            if attempts > 5:
+                raise
+            attempts += 1
+            await asyncio.sleep(3)
 
 
 def convert_color(color, colors):
@@ -493,6 +547,21 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
+    elif message.chat.id == SERVICE_CHATID and re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*',
+                                                         low):
+        try:
+            parselink = re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*', low)[0]
+            site = parselink.split('/')[0]
+            x = int(parselink.split(',')[-3]) - 200
+            y = int(parselink.split(',')[-2]) - 150
+            canvas, _ = fetch_me(site)
+            colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+            img = asyncio.run(
+                get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
+            img = PIL.Image.fromarray(img).convert('RGB')
+            bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
+        except Exception as e:
+            bot.send_message(ME, str(e))
 
 
 @bot.chat_member_handler()
@@ -500,16 +569,6 @@ def msg_chat(upd):
     if upd.new_chat_member.status == "member" and upd.old_chat_member.status == "left":
         bot.send_animation(upd.chat.id,
                            'CgACAgQAAyEFAASBdOsgAAIV-Wc0pgq0nWuUz2g9vOV_U8qwONWbAAK9BQAC3_skU_chjKqyZotRNgQ')
-
-
-@bot.message_handler(func=lambda message: True, content_types=['photo', 'video', 'document', 'text', 'animation'])
-def msg_text(message):
-    if message.chat.id == SERVICE_CHATID and message.photo is not None:
-        bot.send_message(message.chat.id, str(message.photo[-1].file_id) + ' ' + str(
-            message.photo[-1].file_size) + ' ' + bot.get_file_url(message.photo[-1].file_id),
-                         reply_to_message_id=message.message_id)
-    if message.chat.id == SERVICE_CHATID and message.animation is not None:
-        bot.send_message(message.chat.id, str(message.animation.file_id), reply_to_message_id=message.message_id)
 
 
 def callback_process(call):
@@ -633,9 +692,9 @@ def shablon_crop():
     x += box[0]
     y += box[1]
 
-    img = np.array(img, dtype='uint8')
+    img = np.array(img, dtype=np.uint8)
     canvas, _ = fetch_me(url)
-    colors = [np.array([color[0], color[1], color[2], 255], dtype="uint8") for color in canvas["colors"]]
+    colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
 
@@ -659,14 +718,15 @@ def job_hour():
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
         file = get_config_value("FILE")
-        img = np.array(get_pil(file), dtype='uint8')
+        img = np.array(get_pil(file), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url)
-        colors = [np.array([color[0], color[1], color[2], 255], dtype="uint8") for color in canvas["colors"]]
+        colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
-        result = asyncio.run(get_area(0, canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors))
+        result = asyncio.run(
+            get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
@@ -697,18 +757,6 @@ def job_hour():
             except:
                 pass
         generate_telegraph()
-
-        if len(sorted_chunks) > 0:
-            media = []
-            for i, chunk in enumerate(sorted_chunks):
-                if i == 3:
-                    break
-                chunk_x = int(chunk["key"].split("_")[0]) - x
-                chunk_y = int(chunk["key"].split("_")[1]) - y
-                chunk_img = img.crop((chunk_x, chunk_y, chunk_x + 255, chunk_y + 255))
-                m = bot.send_photo(SERVICE_CHATID, send_pil(chunk_img))
-                media.append(types.InputMediaPhoto(m.photo[-1].file_id))
-            bot.send_media_group(SERVICE_CHATID, media)
     except Exception as e:
         bot.send_message(ME, str(e))
     finally:
