@@ -672,19 +672,19 @@ def job_hour():
         change = result["change"]
         perc = (total_size - diff) / total_size
         img = PIL.Image.fromarray(img).convert('RGBA')
-        img = send_pil(img)
         bot.send_message(ME, 'abba2')
-        m = bot.send_document(SERVICE_CHATID, img)
+        m = bot.send_document(SERVICE_CHATID, send_pil(img))
         fil = m.document.file_id
         text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
         if change != 0:
             text += f" <b>({format_change(change)})</b>"
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
-        if sorted_chunks[0]["change"] > 0:
+        sorted_chunks = [chunk for chunk in sorted_chunks if chunk["change"] > 0]
+        if len(sorted_chunks) > 0:
             text2 = "За цими координатами помічено найбільшу ворожу активність:"
             for i, chunk in enumerate(sorted_chunks):
-                if i == 3 or chunk["change"] <= 0:
+                if i == 3:
                     break
                 text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
         for chatid in DB_CHATS:
@@ -697,6 +697,18 @@ def job_hour():
             except:
                 pass
         generate_telegraph()
+
+        if len(sorted_chunks) > 0:
+            media = []
+            for i, chunk in enumerate(sorted_chunks):
+                if i == 3:
+                    break
+                chunk_x = int(chunk["key"].split("_")[0]) - x
+                chunk_y = int(chunk["key"].split("_")[1]) - y
+                chunk_img = img.crop((chunk_x, chunk_y, chunk_x + 255, chunk_y + 255))
+                m = bot.send_photo(SERVICE_CHATID, send_pil(chunk_img))
+                media.append(types.InputMediaPhoto(m.photo[-1].file_id))
+            bot.send_media_group(SERVICE_CHATID, media)
     except Exception as e:
         bot.send_message(ME, str(e))
     finally:
