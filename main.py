@@ -598,9 +598,18 @@ def handle_text(message, txt):
         canvas_char = parselink[0]
         canvas, _ = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
-        img = PIL.Image.fromarray(img).convert('RGB')
-        bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
+        attempts = 0
+        while True:
+            try:
+                img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
+                img = PIL.Image.fromarray(img).convert('RGB')
+                bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
+                break
+            except:
+                if attempts >= 3:
+                    raise
+                attempts += 1
+                time.sleep(3)
 
 
 @bot.chat_member_handler()
