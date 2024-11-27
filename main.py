@@ -589,8 +589,8 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
-    elif re.search(r'\w+\.fun/\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low):
-        parselink = re.search(r'\w+\.fun/\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
+    elif re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low):
+        parselink = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
         site = parselink[0]
         parselink = parselink[1].replace('#', '').split(',')
         x = int(parselink[1]) - 200
