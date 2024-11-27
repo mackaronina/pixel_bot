@@ -107,11 +107,11 @@ def new_color(color):
     return np.array([R, G, B, 255], dtype=np.uint8)
 
 
-def link(url, x, y, zoom):
-    return f'<a href="https://{url}/#d,{x},{y},{zoom}">{x},{y}</a>'
+def link(canvas_char, url, x, y, zoom):
+    return f'<a href="https://{url}/#{canvas_char},{x},{y},{zoom}">{x},{y}</a>'
 
 
-def fetch_me(url):
+def fetch_me(url, canvas_char="d"):
     url = f"https://{url}/api/me"
     with requests.Session() as session:
         attempts = 0
@@ -122,7 +122,7 @@ def fetch_me(url):
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
                 for key, canvas in canvases.items():
-                    if canvas["ident"] == "d":
+                    if canvas["ident"] == canvas_char:
                         canvas["id"] = key
                         return canvas, channel_id
                 return None
@@ -169,7 +169,7 @@ def fetch_channel(url, channel_id):
 
 
 async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-                height, new_colors):
+                height, new_colors, canvas_char):
     url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
@@ -190,26 +190,25 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     tx = off_x + i % 256
                     ty = off_y + i // 256
                     bcl = b & 0x7F
-                    if 0 <= bcl < len(colors):
-                        if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                            continue
-                        x = ty - start_y
-                        y = tx - start_x
-                        color = img[x, y]
-                        if color[3] < 255:
-                            continue
-                        map_color = colors[bcl]
-                        if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
-                            if chunk_diff == 0:
-                                chunk_pixel = link(base_url, tx, ty, 25)
-                            chunk_diff += 1
-                            img[x, y] = map_color
-                        else:
-                            img[x, y] = new_colors[bcl]
-                        chunk_size += 1
+                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                        continue
+                    x = ty - start_y
+                    y = tx - start_x
+                    color = img[x, y]
+                    if color[3] < 255:
+                        continue
+                    map_color = colors[bcl]
+                    if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
+                        if chunk_diff == 0:
+                            chunk_pixel = link(canvas_char, base_url, tx, ty, 25)
+                        chunk_diff += 1
+                        img[x, y] = map_color
+                    else:
+                        img[x, y] = new_colors[bcl]
+                    chunk_size += 1
 
                 if chunk_diff > 10000:
-                    chunk_pixel = link(base_url, off_x + 128, off_y + 128, 10)
+                    chunk_pixel = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
                 result["diff"] += chunk_diff
                 result["total_size"] += chunk_size
                 chunks_info.append({
@@ -229,7 +228,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             await asyncio.sleep(3)
 
 
-async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors):
+async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char):
     chunks_info.clear()
     result = {
         "error": False,
@@ -249,7 +248,7 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
             for ix in range(xc, wc + 1):
                 threads.append(
                     fetch(session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                          height, new_colors))
+                          height, new_colors, canvas_char))
         await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
@@ -292,18 +291,24 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
             if len(data) != 65536:
-                raise Exception("No data")
+                for i in range(256 * 256):
+                    tx = off_x + i % 256
+                    ty = off_y + i // 256
+                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                        continue
+                    x = ty - start_y
+                    y = tx - start_x
+                    img[x, y] = colors[0]
             else:
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
                     ty = off_y + i // 256
                     bcl = b & 0x7F
-                    if 0 <= bcl < len(colors):
-                        if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                            continue
-                        x = ty - start_y
-                        y = tx - start_x
-                        img[x, y] = colors[bcl]
+                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                        continue
+                    x = ty - start_y
+                    y = tx - start_x
+                    img[x, y] = colors[bcl]
                 break
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -455,6 +460,23 @@ def msg_map(message):
     job_hour()
 
 
+@bot.message_handler(commands=["testo"])
+def msg_map(message):
+    if not check_access(message):
+        return
+    url = f"https://pixelplanet.fun/api/me"
+    with requests.Session() as session:
+        resp = session.get(url, impersonate="chrome110")
+        sio = StringIO(resp.text)
+        sio.name = 'resp.txt'
+        sio.seek(0)
+        bot.send_document(ME, sio)
+        sio = StringIO(str(resp.json()))
+        sio.name = 'resp.txt'
+        sio.seek(0)
+        bot.send_document(ME, sio)
+
+
 @bot.message_handler(commands=["set_site"])
 def msg_site(message):
     if not check_access(message):
@@ -513,6 +535,24 @@ def msg_shablon(message):
     bot.reply_to(message, "Ок, все норм")
 
 
+@bot.message_handler(commands=["set_canvas"])
+def msg_canvas(message):
+    if not check_access(message):
+        return
+    args = extract_arg(message.text)
+    if len(args) < 1:
+        bot.reply_to(message,
+                     "Формат команди: /set_canvas [буква]\nЦією командою вказується полотно на сайті. Букву, яка відповідає якомусь полотну, можна знайти в посиланні на це полотно. Наприклад, d - земля, m - місяць, b - мінімапа")
+        return
+    char = args[0].lower()
+    if not re.search(r'\w', char):
+        bot.reply_to(message, "Хуйню якусь написав, сосі")
+        return
+    set_config_value("CANVAS", char)
+    set_config_value("CROPPED", False)
+    bot.reply_to(message, "Ок, все норм")
+
+
 @bot.message_handler(commands=["shablon"])
 def msg_shablon_info(message):
     url = get_config_value("URL")
@@ -549,21 +589,18 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
-    elif re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*',
-                   low):
-        try:
-            parselink = re.search(r'\w*\.fun/#d,[1234567890-]*,[1234567890-]*,[1234567890-]*', low)[0]
-            site = parselink.split('/')[0]
-            x = int(parselink.split(',')[-3]) - 200
-            y = int(parselink.split(',')[-2]) - 150
-            canvas, _ = fetch_me(site)
-            colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-            img = asyncio.run(
-                get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
-            img = PIL.Image.fromarray(img).convert('RGB')
-            bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
-        except Exception as e:
-            bot.send_message(ME, str(e))
+    elif re.search(r'\w+\.fun/\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low):
+        parselink = re.search(r'\w+\.fun/\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
+        site = parselink[0]
+        parselink = parselink[1].replace('#', '').split(',')
+        x = int(parselink[1]) - 200
+        y = int(parselink[2]) - 150
+        canvas_char = parselink[0]
+        canvas, _ = fetch_me(site, canvas_char)
+        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
+        img = PIL.Image.fromarray(img).convert('RGB')
+        bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
 
 
 @bot.chat_member_handler()
@@ -688,6 +725,7 @@ def shablon_crop():
     y = int(get_config_value("Y"))
     file = get_config_value("FILE")
     url = get_config_value("URL")
+    canvas_char = get_config_value("CANVAS")
     img = get_pil(file)
     box = img.getbbox()
     img = img.crop(box)
@@ -695,7 +733,7 @@ def shablon_crop():
     y += box[1]
 
     img = np.array(img, dtype=np.uint8)
-    canvas, _ = fetch_me(url)
+    canvas, _ = fetch_me(url, canvas_char)
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
@@ -720,15 +758,17 @@ def job_hour():
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
         file = get_config_value("FILE")
+        canvas_char = get_config_value("CANVAS")
         img = np.array(get_pil(file), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
-        canvas, _ = fetch_me(url)
+        canvas, _ = fetch_me(url, canvas_char)
         colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
-            get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors))
+            get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors,
+                     canvas_char))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
