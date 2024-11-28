@@ -466,13 +466,18 @@ def msg_map(message):
         return
     url = f"https://pixelplanet.fun/api/me"
     with requests.Session() as session:
-        resp = session.get(url, impersonate="chrome110")
+        proxy = "http://185.195.71.218:18080"
+        proxies = {
+            "http": proxy,
+            "https": proxy,
+        }
+        resp = session.get(url, impersonate="chrome110", proxies=proxies)
         sio = StringIO(resp.text)
         sio.name = 'resp.txt'
         sio.seek(0)
         bot.send_document(ME, sio)
         sio = StringIO(str(resp.json()))
-        sio.name = 'resp.txt'
+        sio.name = 'respjson.txt'
         sio.seek(0)
         bot.send_document(ME, sio)
 
@@ -545,7 +550,7 @@ def msg_canvas(message):
                      "Формат команди: /set_canvas [буква]\nЦією командою вказується полотно на сайті. Букву, яка відповідає якомусь полотну, можна знайти в посиланні на це полотно. Наприклад, d - земля, m - місяць, b - мінімапа")
         return
     char = args[0].lower()
-    if not re.search(r'\w', char):
+    if not re.search(r'\b\w\b', char):
         bot.reply_to(message, "Хуйню якусь написав, сосі")
         return
     set_config_value("CANVAS", char)
