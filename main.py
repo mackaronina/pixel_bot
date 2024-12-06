@@ -752,12 +752,22 @@ def shablon_crop():
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
 
-    m = bot.send_document(SERVICE_CHATID, send_pil(img))
-    fil = m.document.file_id
-    set_config_value("X", x)
-    set_config_value("Y", y)
-    set_config_value("FILE", fil)
-    set_config_value("CROPPED", True)
+    attempts = 0
+    while True:
+        try:
+            m = bot.send_document(SERVICE_CHATID, send_pil(img))
+            fil = m.document.file_id
+            set_config_value("X", x)
+            set_config_value("Y", y)
+            set_config_value("FILE", fil)
+            set_config_value("CROPPED", True)
+            break
+        except Exception as e:
+            if attempts >= 3:
+                raise
+            bot.send_message(ME, str(e))
+            attempts += 1
+            time.sleep(3)
 
 
 def job_hour():
