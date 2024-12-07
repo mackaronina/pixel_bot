@@ -1,6 +1,7 @@
 import asyncio
 import math
 import os
+import random
 import re
 import time
 import traceback
@@ -18,6 +19,8 @@ from flask import Flask, request
 from sqlalchemy import create_engine
 from telebot import apihelper, types
 from telegraph import Telegraph
+
+from config import *
 
 ANONIM = 1087968824
 ME = 7258570440
@@ -67,6 +70,13 @@ def get_config_value(key):
         return data[0]
 
 
+def get_proxy(url):
+    if "pixelplanet" in url:
+        return random.choice(all_proxies)
+    else:
+        return None
+
+
 def set_config_value(key, value):
     if get_config_value(key) is None:
         cursor.execute(f"INSERT INTO key_value (key, value) VALUES ('{key}', '{value}')")
@@ -112,12 +122,12 @@ def link(canvas_char, url, x, y, zoom):
 
 
 def fetch_me(url, canvas_char="d"):
-    url = f"https://{url}/api/me"
+    url = f"http://{url}/api/me"
     with requests.Session() as session:
         attempts = 0
         while True:
             try:
-                resp = session.get(url, impersonate="chrome110")
+                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url))
                 data = resp.json()
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
@@ -281,11 +291,11 @@ async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height
 
 async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
                       height):
-    url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+    url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     attempts = 0
     while True:
         try:
-            rsp = await sess.get(url, impersonate="chrome110")
+            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url))
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
