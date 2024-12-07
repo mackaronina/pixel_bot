@@ -126,14 +126,15 @@ def fetch_me(url, canvas_char="d"):
     with requests.Session() as session:
         for attempts in range(10):
             try:
-                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url), timeout=3)
+                proxies = get_proxy(url)
+                resp = session.get(url, impersonate="chrome110", proxies=proxies, timeout=3)
                 data = resp.json()
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
                 for key, canvas in canvases.items():
                     if canvas["ident"] == canvas_char:
                         canvas["id"] = key
-                        return canvas, channel_id
+                        return canvas, channel_id, proxies
                 return None
             except:
                 pass
@@ -266,7 +267,7 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
     return result
 
 
-async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height, colors, url):
+async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, proxies):
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
     xc = (start_x - offset) // 256
@@ -280,17 +281,17 @@ async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height
             for ix in range(xc, wc + 1):
                 threads.append(
                     fetch_small(session, canvas_id, canvasoffset, ix, iy, colors, url, img, start_x, start_y, width,
-                                height))
+                                height, proxies))
         await asyncio.gather(*threads)
     return img
 
 
 async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
-                      height):
+                      height, proxies):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
-    for attempts in range(10):
+    for attempts in range(5):
         try:
-            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url), timeout=3)
+            rsp = await sess.get(url, impersonate="chrome110", proxies=proxies)
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -602,12 +603,12 @@ def handle_text(message, txt):
         x = int(parselink[1]) - 200
         y = int(parselink[2]) - 150
         canvas_char = parselink[0]
-        canvas, _ = fetch_me(site, canvas_char)
+        canvas, _, proxies = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
         attempts = 0
         while True:
             try:
-                img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
+                img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site, proxies))
                 img = PIL.Image.fromarray(img).convert('RGB')
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
                 break
@@ -715,7 +716,7 @@ def job_minute():
         while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
-        _, channel_id = fetch_me(url)
+        _, channel_id, _ = fetch_me(url)
         history = fetch_channel(url, channel_id)
         for msg in history:
             if msg[4] in processed_messages or time.time() - msg[4] > 180:
@@ -748,7 +749,7 @@ def shablon_crop():
     y += box[1]
 
     img = np.array(img, dtype=np.uint8)
-    canvas, _ = fetch_me(url, canvas_char)
+    canvas, _, _ = fetch_me(url, canvas_char)
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
@@ -787,7 +788,7 @@ def job_hour():
         img = np.array(get_pil(file), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
-        canvas, _ = fetch_me(url, canvas_char)
+        canvas, _, _ = fetch_me(url, canvas_char)
         colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
