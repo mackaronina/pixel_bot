@@ -124,7 +124,7 @@ def link(canvas_char, url, x, y, zoom):
 def fetch_me(url, canvas_char="d"):
     url = f"http://{url}/api/me"
     with requests.Session() as session:
-        for attempts in range(5):
+        for attempts in range(10):
             try:
                 resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url), timeout=3)
                 data = resp.json()
@@ -136,7 +136,7 @@ def fetch_me(url, canvas_char="d"):
                         return canvas, channel_id
                 return None
             except:
-                time.sleep(1)
+                pass
         raise Exception("Failed to fetch canvas")
 
 
@@ -288,7 +288,7 @@ async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height
 async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
                       height):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
-    for attempts in range(5):
+    for attempts in range(10):
         try:
             rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url), timeout=3)
             data = rsp.content
@@ -316,7 +316,7 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                     img[x, y] = colors[bcl]
             return
         except:
-            await asyncio.sleep(1)
+            pass
     raise Exception("Failed to fetch small area")
 
 
