@@ -127,7 +127,7 @@ def fetch_me(url, canvas_char="d"):
         attempts = 0
         while True:
             try:
-                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url))
+                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url), timeout=5)
                 data = resp.json()
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
@@ -295,7 +295,7 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
     attempts = 0
     while True:
         try:
-            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url))
+            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url), timeout=5)
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
