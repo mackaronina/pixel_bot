@@ -124,10 +124,9 @@ def link(canvas_char, url, x, y, zoom):
 def fetch_me(url, canvas_char="d"):
     url = f"http://{url}/api/me"
     with requests.Session() as session:
-        attempts = 0
-        while True:
+        for attempts in range(5):
             try:
-                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url), timeout=5)
+                resp = session.get(url, impersonate="chrome110", proxies=get_proxy(url), timeout=3)
                 data = resp.json()
                 canvases = data["canvases"]
                 channel_id = list(data["channels"].keys())[0]
@@ -137,11 +136,8 @@ def fetch_me(url, canvas_char="d"):
                         return canvas, channel_id
                 return None
             except:
-                if attempts > 5:
-                    raise
-                attempts += 1
-                time.sleep(3)
-                pass
+                time.sleep(1)
+        raise Exception("Failed to fetch canvas")
 
 
 def fetch_ranking(url):
@@ -292,10 +288,9 @@ async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height
 async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
                       height):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
-    attempts = 0
-    while True:
+    for attempts in range(5):
         try:
-            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url), timeout=5)
+            rsp = await sess.get(url, impersonate="chrome110", proxies=get_proxy(base_url), timeout=3)
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -319,14 +314,10 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                     x = ty - start_y
                     y = tx - start_x
                     img[x, y] = colors[bcl]
-                break
-        except Exception as e:
-            bot.send_message(ME, str(e))
-            bot.send_message(ME, str(url))
-            if attempts > 5:
-                raise
-            attempts += 1
-            await asyncio.sleep(3)
+            return
+        except:
+            await asyncio.sleep(1)
+    raise Exception("Failed to fetch small area")
 
 
 def convert_color(color, colors):
