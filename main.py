@@ -1,6 +1,5 @@
 import asyncio
 import math
-import os
 import random
 import re
 import time
@@ -22,12 +21,6 @@ from telegraph import Telegraph
 
 from config import *
 
-ANONIM = 1087968824
-ME = 7258570440
-SERVICE_CHATID = -1002171923232
-TOKEN = os.environ['BOT_TOKEN']
-APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
-
 is_running = False
 old_chunks_diff = {}
 chunks_info = []
@@ -35,9 +28,6 @@ blocked_messages = []
 processed_messages = []
 updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 telegraph_url = None
-
-telegraph = Telegraph()
-telegraph.create_account(short_name='Svinka')
 
 
 class ExHandler(telebot.ExceptionHandler):
@@ -59,7 +49,6 @@ bot.set_webhook(url=APP_URL, allowed_updates=['message', 'callback_query', 'chat
 cursor = create_engine(
     f'postgresql://postgres.hdahfrunlvoethhwinnc:gT77Av9pQ8IjleU2@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
     pool_recycle=280)
-DB_CHATS = [-1002171923232, -1002037657920]
 
 
 def get_config_value(key):
@@ -68,13 +57,6 @@ def get_config_value(key):
         return None
     else:
         return data[0]
-
-
-def get_proxy(url):
-    if "pixelplanet" in url:
-        return random.choice(all_proxies)
-    else:
-        return None
 
 
 def set_config_value(key, value):
@@ -123,65 +105,73 @@ def link(canvas_char, url, x, y, zoom):
 
 def fetch_me(url, canvas_char="d"):
     url = f"http://{url}/api/me"
+    data = None
+    ret_proxies = None
     with requests.Session() as session:
-        for attempts in range(10):
-            try:
-                proxies = get_proxy(url)
-                resp = session.get(url, impersonate="chrome110", proxies=proxies, timeout=3)
-                data = resp.json()
-                canvases = data["canvases"]
-                channel_id = list(data["channels"].keys())[0]
-                for key, canvas in canvases.items():
-                    if canvas["ident"] == canvas_char:
-                        canvas["id"] = key
-                        return canvas, channel_id, proxies
-                return None
-            except:
-                pass
-        raise Exception("Failed to fetch canvas")
+        if 'pixelplanet' in url:
+            random.shuffle(ALL_PROXIES)
+            for proxies in ALL_PROXIES:
+                try:
+                    resp = session.get(url, impersonate="chrome110", proxies=proxies, timeout=3)
+                    data = resp.json()
+                    ret_proxies = proxies
+                    break
+                except:
+                    pass
+        else:
+            for attempts in range(5):
+                try:
+                    resp = session.get(url, impersonate="chrome110", timeout=3)
+                    data = resp.json()
+                    break
+                except:
+                    pass
+        if data is None:
+            raise Exception("Failed to fetch canvas")
+        canvases = data["canvases"]
+        channel_id = list(data["channels"].keys())[0]
+        for key, canvas in canvases.items():
+            if canvas["ident"] == canvas_char:
+                canvas["id"] = key
+                return canvas, channel_id, ret_proxies
+        raise Exception("Canvas not found")
 
 
 def fetch_ranking(url):
-    url = f"https://{url}/ranking"
+    url = f"http://{url}/ranking"
     with requests.Session() as session:
-        attempts = 0
-        while True:
+        for attempts in range(5):
             try:
                 resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
-                return data["dailyCRanking"]
+                if "pixelya" in url:
+                    return data["dailyCorRanking"]
+                else:
+                    return data["dailyCRanking"]
             except:
-                if attempts > 5:
-                    raise
-                attempts += 1
-                time.sleep(3)
                 pass
+        raise Exception("Rankings failed")
 
 
-def fetch_channel(url, channel_id):
-    url = f"https://{url}/api/chathistory?cid={channel_id}&limit=50"
+def fetch_channel(url, channel_id, proxies):
+    url = f"http://{url}/api/chathistory?cid={channel_id}&limit=50"
     with requests.Session() as session:
-        attempts = 0
-        while True:
+        for attempts in range(5):
             try:
-                resp = session.get(url, impersonate="chrome110")
+                resp = session.get(url, impersonate="chrome110", proxies=proxies)
                 data = resp.json()
                 return data["history"]
             except:
-                if attempts > 5:
-                    raise
-                attempts += 1
-                time.sleep(3)
                 pass
+        raise Exception("Chat history failed")
 
 
 async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-                height, new_colors, canvas_char):
-    url = f"https://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
-    attempts = 0
-    while True:
+                height, new_colors, canvas_char, proxies):
+    url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
+    for attempts in range(5):
         try:
-            rsp = await sess.get(url, impersonate="chrome110")
+            rsp = await sess.get(url, impersonate="chrome110", proxies=proxies)
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -224,18 +214,14 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     "pixel_link": chunk_pixel,
                     "change": 0
                 })
-                break
-        except Exception as e:
-            bot.send_message(ME, str(e))
-            bot.send_message(ME, str(url))
-            if attempts > 5:
-                result["error"] = True
                 return
-            attempts += 1
-            await asyncio.sleep(3)
+        except:
+            pass
+    result["error"] = True
 
 
-async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char):
+async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char,
+                   proxies):
     chunks_info.clear()
     result = {
         "error": False,
@@ -255,7 +241,7 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
             for ix in range(xc, wc + 1):
                 threads.append(
                     fetch(session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                          height, new_colors, canvas_char))
+                          height, new_colors, canvas_char, proxies))
         await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
@@ -386,29 +372,22 @@ def format_time(a):
 
 
 def generate_telegraph():
-    global telegraph_url
     text = "<p><h4>Сортування за кількістю пікселів:</h4>"
-    txt, _ = generate_coords_text("diff", False)
-    text += txt
+    text += generate_coords_text_telegraph("diff")
     text += "<h4>Сортування за зміною пікселів:</h4>"
-    txt, _ = generate_coords_text("change", False)
-    text += txt
+    text += generate_coords_text_telegraph("change")
     text += "</p>"
-    attempts = 0
-    while True:
+    telegraph = Telegraph()
+    telegraph.create_account(short_name='Svinka')
+    for attempts in range(5):
         try:
             response = telegraph.create_page(
                 'Список всіх координат',
                 html_content=text
             )
-            telegraph_url = response['url']
-            break
-        except Exception as e:
-            bot.send_message(ME, str(e))
-            if attempts > 5:
-                return
-            attempts += 1
-            time.sleep(3)
+            return response['url']
+        except:
+            pass
 
 
 def generate_keyboard(sort_type, idk):
@@ -422,7 +401,7 @@ def generate_keyboard(sort_type, idk):
     return keyboard
 
 
-def generate_coords_text(sort_by, limit=True):
+def generate_coords_text(sort_by):
     is_empty = False
     if len(chunks_info) == 0:
         text = "Нічого не знайдено, сосі"
@@ -434,24 +413,33 @@ def generate_coords_text(sort_by, limit=True):
             text = "Нічого не знайдено, сосі"
             is_empty = True
         else:
-            if limit:
-                if not is_running:
-                    text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
-                else:
-                    text = f"Дані в процесі оновлення"
-                text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
+            if not is_running:
+                text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
             else:
-                text = "№ | Координати | Пікселі | Зміна"
+                text = f"Дані в процесі оновлення"
+            text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
             for i, chunk in enumerate(sorted_chunks):
-                if i == 20 and limit:
+                if i == 20:
                     break
-                if limit:
-                    text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
-                else:
-                    text += f"<br>{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
-            if len(sorted_chunks) - 20 > 0 and limit:
+                text += f"\n{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}"
+            if len(sorted_chunks) - 20 > 0:
                 text += f"\n\nНе показано точок: {len(sorted_chunks) - 20}"
     return text, is_empty
+
+
+def generate_coords_text_telegraph(sort_by):
+    if len(chunks_info) == 0:
+        text = "Нічого не знайдено, сосі<br>"
+    else:
+        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk[sort_by], reverse=True)
+        sorted_chunks = [chunk for chunk in sorted_chunks if chunk["diff"] > 0]
+        if len(sorted_chunks) == 0:
+            text = "Нічого не знайдено, сосі<br>"
+        else:
+            text = "№ | Координати | Пікселі | Зміна<br>"
+            for i, chunk in enumerate(sorted_chunks):
+                text += f"{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}<br>"
+    return text
 
 
 @bot.message_handler(commands=["map"])
@@ -460,28 +448,6 @@ def msg_map(message):
         return
     bot.reply_to(message, "Зроз, чекай")
     job_hour()
-
-
-@bot.message_handler(commands=["testo"])
-def msg_map(message):
-    if not check_access(message):
-        return
-    url = f"https://pixelplanet.fun/api/me"
-    with requests.Session() as session:
-        proxy = "http://185.195.71.218:18080"
-        proxies = {
-            "http": proxy,
-            "https": proxy,
-        }
-        resp = session.get(url, impersonate="chrome110", proxies=proxies)
-        sio = StringIO(resp.text)
-        sio.name = 'resp.txt'
-        sio.seek(0)
-        bot.send_document(ME, sio)
-        sio = StringIO(str(resp.json()))
-        sio.name = 'respjson.txt'
-        sio.seek(0)
-        bot.send_document(ME, sio)
 
 
 @bot.message_handler(commands=["set_site"])
@@ -605,18 +571,15 @@ def handle_text(message, txt):
         canvas_char = parselink[0]
         canvas, _, proxies = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        attempts = 0
-        while True:
+        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site, proxies))
+        img = PIL.Image.fromarray(img).convert('RGB')
+        for attempts in range(5):
             try:
-                img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site, proxies))
-                img = PIL.Image.fromarray(img).convert('RGB')
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
-                break
+                return
             except:
-                if attempts >= 3:
-                    raise
-                attempts += 1
-                time.sleep(3)
+                pass
+        raise Exception("Failed to send photo")
 
 
 @bot.chat_member_handler()
@@ -716,19 +679,27 @@ def job_minute():
         while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
-        _, channel_id, _ = fetch_me(url)
-        history = fetch_channel(url, channel_id)
+        _, channel_id, proxies = fetch_me(url)
+        history = fetch_channel(url, channel_id, proxies)
         for msg in history:
-            if msg[4] in processed_messages or time.time() - msg[4] > 180:
+            if 'pixelya' in url:
+                msg_time = msg[9]
+                msg_sender = msg[0]
+                msg_txt = msg[2].lower()
+            else:
+                msg_time = msg[4]
+                msg_sender = msg[0]
+                msg_txt = msg[1].lower()
+            if msg_time in processed_messages or time.time() - msg_time > 180:
                 continue
-            if msg[0] == "event" and "Threat successfully defeated" in msg[1]:
+            if msg_sender == "event" and "successfully defeated" in msg_txt:
                 text = f"<b>Почалося знижене кд, гойда!</b>"
                 for chatid in DB_CHATS:
                     try:
                         bot.send_message(chatid, text)
                     except:
                         pass
-            processed_messages.append(msg[4])
+            processed_messages.append(msg_time)
     except Exception as e:
         bot.send_message(ME, str(e))
 
@@ -754,8 +725,7 @@ def shablon_crop():
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
 
-    attempts = 0
-    while True:
+    for attempts in range(5):
         try:
             m = bot.send_document(SERVICE_CHATID, send_pil(img))
             fil = m.document.file_id
@@ -763,13 +733,10 @@ def shablon_crop():
             set_config_value("Y", y)
             set_config_value("FILE", fil)
             set_config_value("CROPPED", True)
-            break
-        except Exception as e:
-            if attempts >= 3:
-                raise
-            bot.send_message(ME, str(e))
-            attempts += 1
-            time.sleep(3)
+            return
+        except:
+            pass
+    raise Exception("Failed to send file")
 
 
 def job_hour():
@@ -788,13 +755,13 @@ def job_hour():
         img = np.array(get_pil(file), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
-        canvas, _, _ = fetch_me(url, canvas_char)
+        canvas, _, proxies = fetch_me(url, canvas_char)
         colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
             get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors,
-                     canvas_char))
+                     canvas_char, proxies))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
@@ -824,7 +791,7 @@ def job_hour():
                     bot.send_message(chatid, text2)
             except:
                 pass
-        generate_telegraph()
+        telegraph_url = generate_telegraph()
     except Exception as e:
         bot.send_message(ME, str(e))
     finally:

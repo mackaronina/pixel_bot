@@ -1,4 +1,6 @@
-all_proxies = [
+import os
+
+ALL_PROXIES = [
     {'http': 'http://189.240.60.169:9090'},
     {'http': 'http://189.240.60.171:9090'},
     {'http': 'http://160.86.242.23:8080'},
@@ -15,3 +17,9 @@ all_proxies = [
     {'http': 'http://64.147.212.78:8080'},
     {'http': 'http://34.93.151.205:8660'}
 ]
+ANONIM = 1087968824
+ME = 7258570440
+SERVICE_CHATID = -1002171923232
+TOKEN = os.environ['BOT_TOKEN']
+APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
+DB_CHATS = [-1002171923232, -1002037657920]
