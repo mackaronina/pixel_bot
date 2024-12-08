@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="08010453-49d9-4ae7-90f5-93a1ac82813a" name="Changes" comment="Some commit" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
+  <component name="FormatOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;mackaronina&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/mackaronina/pixel_bot.git&quot;,
+    &quot;accountId&quot;: &quot;b3f19be7-da28-430d-867e-a1925a798a64&quot;
+  }
+}</component>
+  <component name="OptimizeOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2oiyy5WFpZRCAXhx2SdqDbu7yxS" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/ukrbot",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.editor.code.editing",
+    "settings.editor.splitter.proportion": "0.29153925",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="Python.ukrbot">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="ukrbot" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ukrbot" type="PythonConfigurationType" factoryName="Python">
+      <module name="ukrbot" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-PY-243.21565.199" />
+        <option value="bundled-python-sdk-cab1f2013843-4ae2d6a61b08-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.21565.199" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="08010453-49d9-4ae7-90f5-93a1ac82813a" name="Changes" comment="" />
+      <created>1731366941690</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1731366941690</updated>
+      <workItem from="1731366946312" duration="6435000" />
+      <workItem from="1731378008658" duration="1550000" />
+      <workItem from="1731429938985" duration="2359000" />
+      <workItem from="1731432821648" duration="22000" />
+      <workItem from="1731447338651" duration="630000" />
+      <workItem from="1731506574923" duration="56000" />
+      <workItem from="1731506638186" duration="5787000" />
+      <workItem from="1731526819717" duration="267000" />
+      <workItem from="1731527463853" duration="686000" />
+      <workItem from="1731556844920" duration="2045000" />
+      <workItem from="1731600401412" duration="12137000" />
+      <workItem from="1731621363984" duration="8696000" />
+      <workItem from="1731631868860" duration="816000" />
+      <workItem from="1731685132447" duration="156000" />
+      <workItem from="1731698050003" duration="16184000" />
+      <workItem from="1731749143655" duration="292000" />
+      <workItem from="1731754191264" duration="2854000" />
+      <workItem from="1731773526148" duration="113000" />
+      <workItem from="1731774354279" duration="836000" />
+      <workItem from="1731776212861" duration="29000" />
+      <workItem from="1731777312179" duration="344000" />
+      <workItem from="1731791587397" duration="4513000" />
+      <workItem from="1731796398461" duration="1175000" />
+      <workItem from="1731815689315" duration="1008000" />
+      <workItem from="1731850227397" duration="7109000" />
+      <workItem from="1731860925461" duration="1359000" />
+      <workItem from="1731869357997" duration="1207000" />
+      <workItem from="1731873380920" duration="110000" />
+      <workItem from="1731874640305" duration="1371000" />
+      <workItem from="1731878255587" duration="857000" />
+      <workItem from="1731879128290" duration="2070000" />
+      <workItem from="1731881231750" duration="2701000" />
+      <workItem from="1731885914885" duration="3007000" />
+      <workItem from="1731927536542" duration="155000" />
+      <workItem from="1731929315012" duration="98000" />
+      <workItem from="1732022363453" duration="62000" />
+      <workItem from="1732029374178" duration="1952000" />
+      <workItem from="1732119154855" duration="1954000" />
+      <workItem from="1732137415396" duration="454000" />
+      <workItem from="1732201901109" duration="2533000" />
+      <workItem from="1732204481864" duration="32000" />
+      <workItem from="1732205606211" duration="55000" />
+      <workItem from="1732219506757" duration="148000" />
+      <workItem from="1732229757025" duration="620000" />
+      <workItem from="1732303037025" duration="9865000" />
+      <workItem from="1732335821195" duration="117000" />
+      <workItem from="1732380064855" duration="13874000" />
+      <workItem from="1732395429796" duration="1317000" />
+      <workItem from="1732397390790" duration="396000" />
+      <workItem from="1732403326547" duration="444000" />
+      <workItem from="1732404528330" duration="1621000" />
+      <workItem from="1732408732171" duration="1725000" />
+      <workItem from="1732412622301" duration="3189000" />
+      <workItem from="1732415864338" duration="216000" />
+      <workItem from="1732457932943" duration="386000" />
+      <workItem from="1732458700187" duration="445000" />
+      <workItem from="1732459202846" duration="4000" />
+      <workItem from="1732459274367" duration="7000" />
+      <workItem from="1732471207371" duration="67000" />
+      <workItem from="1732480819365" duration="3623000" />
+      <workItem from="1732490485366" duration="825000" />
+      <workItem from="1732492148050" duration="21000" />
+      <workItem from="1732581555626" duration="122000" />
+      <workItem from="1732581693922" duration="1939000" />
+      <workItem from="1732607934994" duration="7697000" />
+      <workItem from="1732646651305" duration="414000" />
+      <workItem from="1732650025435" duration="1739000" />
+      <workItem from="1732655139742" duration="1067000" />
+      <workItem from="1732662633122" duration="5998000" />
+      <workItem from="1732673016756" duration="2557000" />
+      <workItem from="1732716296943" duration="3271000" />
+      <workItem from="1732831371758" duration="125000" />
+      <workItem from="1733351213137" duration="406000" />
+      <workItem from="1733351697245" duration="12000" />
+      <workItem from="1733360202512" duration="652000" />
+      <workItem from="1733479315958" duration="757000" />
+      <workItem from="1733480581139" duration="9000" />
+      <workItem from="1733526581463" duration="3245000" />
+      <workItem from="1733531081649" duration="71000" />
+      <workItem from="1733531160272" duration="7559000" />
+      <workItem from="1733542502369" duration="461000" />
+      <workItem from="1733543266805" duration="4889000" />
+      <workItem from="1733548339821" duration="88000" />
+      <workItem from="1733549817621" duration="11000" />
+      <workItem from="1733609667227" duration="1667000" />
+      <workItem from="1733615664583" duration="77000" />
+      <workItem from="1733624235952" duration="4444000" />
+      <workItem from="1733671312250" duration="1762000" />
+      <workItem from="1733673100574" duration="400000" />
+    </task>
+    <task id="LOCAL-00001" summary="Some commit">
+      <option name="closed" value="true" />
+      <created>1733672791916</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1733672791916</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Some commit" />
+    <option name="LAST_COMMIT_MESSAGE" value="Some commit" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/ukrbot$main.coverage" NAME="main Coverage Results" MODIFIED="1732385604391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>
