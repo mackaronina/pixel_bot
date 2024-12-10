@@ -23,6 +23,7 @@ from config import *
 
 is_running = False
 old_chunks_diff = {}
+top_three = []
 chunks_info = []
 blocked_messages = []
 processed_messages = []
@@ -740,7 +741,7 @@ def shablon_crop():
 
 
 def job_hour():
-    global is_running, updated_at, telegraph_url
+    global is_running, updated_at, telegraph_url, top_three
     try:
         if is_running:
             return
@@ -768,20 +769,34 @@ def job_hour():
         perc = (total_size - diff) / total_size
         img = PIL.Image.fromarray(img).convert('RGBA')
         bot.send_message(ME, 'abba2')
-        m = bot.send_document(SERVICE_CHATID, send_pil(img))
-        fil = m.document.file_id
+        fil = None
+        for attempts in range(5):
+            try:
+                m = bot.send_document(SERVICE_CHATID, send_pil(img))
+                fil = m.document.file_id
+                break
+            except:
+                pass
+        if fil is None:
+            raise Exception("Failed to send file")
         text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
         if change != 0:
             text += f" <b>({format_change(change)})</b>"
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
         sorted_chunks = [chunk for chunk in sorted_chunks if chunk["change"] > 0]
+        new_top_three = []
         if len(sorted_chunks) > 0:
             text2 = "За цими координатами помічено найбільшу ворожу активність:"
             for i, chunk in enumerate(sorted_chunks):
                 if i == 3:
                     break
-                text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
+                if chunk['key'] in top_three:
+                    text2 += f"\n❗️{chunk['pixel_link']}  +{chunk['change']}"
+                else:
+                    text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
+                new_top_three.append(chunk['key'])
+        top_three = new_top_three
         for chatid in DB_CHATS:
             try:
                 bot.send_message(chatid, text)
