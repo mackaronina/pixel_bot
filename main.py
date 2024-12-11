@@ -23,7 +23,7 @@ from config import *
 
 is_running = False
 old_chunks_diff = {}
-top_three = []
+top_three = {}
 chunks_info = []
 blocked_messages = []
 processed_messages = []
@@ -785,17 +785,22 @@ def job_hour():
         text2 = None
         sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
         sorted_chunks = [chunk for chunk in sorted_chunks if chunk["change"] > 0]
-        new_top_three = []
+        new_top_three = {}
         if len(sorted_chunks) > 0:
             text2 = "За цими координатами помічено найбільшу ворожу активність:"
             for i, chunk in enumerate(sorted_chunks):
                 if i == 3:
                     break
-                if chunk['key'] in top_three:
-                    text2 += f"\n❗️{chunk['pixel_link']}  +{chunk['change']}"
+                key = chunk['key']
+                if key in top_three.keys():
+                    if top_three[key] == 1:
+                        text2 += f"\n❗️{chunk['pixel_link']}  +{chunk['change']}"
+                    else:
+                        text2 += f"\n‼️{chunk['pixel_link']}  +{chunk['change']}"
+                    new_top_three[key] = top_three[key] + 1
                 else:
                     text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
-                new_top_three.append(chunk['key'])
+                    new_top_three[key] = 1
         top_three = new_top_three
         for chatid in DB_CHATS:
             try:
