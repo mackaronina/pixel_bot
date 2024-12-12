@@ -313,7 +313,8 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                     y = tx - start_x
                     img[x, y] = colors[bcl]
             return
-        except:
+        except Exception as e:
+            bot.send_message(ME, str(e))
             await asyncio.sleep(1)
             if proxies is not None:
                 proxies = random.choice(all_proxies)
