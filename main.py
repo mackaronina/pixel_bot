@@ -50,6 +50,14 @@ bot.set_webhook(url=APP_URL, allowed_updates=['message', 'callback_query', 'chat
 cursor = create_engine(
     f'postgresql://postgres.hdahfrunlvoethhwinnc:gT77Av9pQ8IjleU2@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
     pool_recycle=280)
+all_proxies = [
+    {'http': 'http://136.144.52.41:443'},
+    {'http': 'http://72.10.164.178:19175'},
+    {'http': 'http://67.43.227.227:27921'},
+    {'http': 'http://160.86.242.23:8080'},
+    {'http': 'http://107.189.8.240:8080'},
+    {'http': 'http://141.145.197.152:8888'}
+]
 
 
 def get_config_value(key):
@@ -110,15 +118,15 @@ def fetch_me(url, canvas_char="d"):
     ret_proxies = None
     with requests.Session() as session:
         if 'pixelplanet' in url:
-            random.shuffle(ALL_PROXIES)
-            for proxies in ALL_PROXIES:
+            random.shuffle(all_proxies)
+            for proxies in all_proxies:
                 try:
                     resp = session.get(url, impersonate="chrome110", proxies=proxies, timeout=3)
                     data = resp.json()
                     ret_proxies = proxies
                     break
                 except:
-                    pass
+                    time.sleep(1)
         else:
             for attempts in range(5):
                 try:
@@ -126,7 +134,7 @@ def fetch_me(url, canvas_char="d"):
                     data = resp.json()
                     break
                 except:
-                    pass
+                    time.sleep(1)
         if data is None:
             raise Exception("Failed to fetch canvas")
         canvases = data["canvases"]
@@ -150,7 +158,7 @@ def fetch_ranking(url):
                 else:
                     return data["dailyCRanking"]
             except:
-                pass
+                time.sleep(1)
         raise Exception("Rankings failed")
 
 
@@ -163,7 +171,7 @@ def fetch_channel(url, channel_id, proxies):
                 data = resp.json()
                 return data["history"]
             except:
-                pass
+                time.sleep(1)
         raise Exception("Chat history failed")
 
 
@@ -217,7 +225,9 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 })
                 return
         except:
-            pass
+            await asyncio.sleep(1)
+            if proxies is not None:
+                proxies = random.choice(all_proxies)
     result["error"] = True
 
 
@@ -304,7 +314,9 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                     img[x, y] = colors[bcl]
             return
         except:
-            pass
+            await asyncio.sleep(1)
+            if proxies is not None:
+                proxies = random.choice(all_proxies)
     raise Exception("Failed to fetch small area")
 
 
@@ -388,7 +400,7 @@ def generate_telegraph():
             )
             return response['url']
         except:
-            pass
+            time.sleep(1)
 
 
 def generate_keyboard(sort_type, idk):
@@ -579,7 +591,7 @@ def handle_text(message, txt):
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
                 return
             except:
-                pass
+                time.sleep(1)
         raise Exception("Failed to send photo")
 
 
@@ -736,8 +748,22 @@ def shablon_crop():
             set_config_value("CROPPED", True)
             return
         except:
-            pass
+            time.sleep(1)
     raise Exception("Failed to send file")
+
+
+def job_update_proxy():
+    global all_proxies
+    with requests.Session() as session:
+        for attempts in range(5):
+            try:
+                resp = session.get("https://get-proxies.onrender.com/list", impersonate="chrome110")
+                data = resp.json()
+                if len(data) > 0:
+                    all_proxies = data
+                return
+            except:
+                time.sleep(1)
 
 
 def job_hour():
@@ -776,7 +802,7 @@ def job_hour():
                 fil = m.document.file_id
                 break
             except:
-                pass
+                time.sleep(1)
         if fil is None:
             raise Exception("Failed to send file")
         text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
@@ -826,7 +852,10 @@ if __name__ == '__main__':
     scheduler2.every().day.at("23:00").do(job_day)
     scheduler3 = schedule.Scheduler()
     scheduler3.every(1).minutes.do(job_minute)
+    scheduler4 = schedule.Scheduler()
+    scheduler4.every(3).hours.do(job_update_proxy)
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
+    Thread(target=updater, args=(scheduler4,)).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
