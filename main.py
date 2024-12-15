@@ -1,4 +1,5 @@
 import asyncio
+import json
 import math
 import random
 import re
@@ -385,6 +386,10 @@ def format_time(a):
         return str(a)
 
 
+def to_matrix(l, n):
+    return [l[i:i + n] for i in range(0, len(l), n)]
+
+
 def generate_telegraph():
     text = "<p><h4>Сортування за кількістю пікселів:</h4>"
     text += generate_coords_text_telegraph("diff")
@@ -540,6 +545,28 @@ def msg_canvas(message):
     bot.reply_to(message, "Ок, все норм")
 
 
+@bot.message_handler(commands=["void_on"])
+def void_on(message):
+    ping_users = json.loads(get_config_value("PING_USERS"))
+    if message.from_user.id in ping_users:
+        bot.reply_to(message, "Ти і так пінгуєшся, сосі")
+        return
+    ping_users.append(message.from_user.id)
+    set_config_value("PING_USERS", json.dumps(ping_users))
+    bot.reply_to(message, "Ти тепер пінгуєшся під час зниженого кд")
+
+
+@bot.message_handler(commands=["void_off"])
+def void_off(message):
+    ping_users = json.loads(get_config_value("PING_USERS"))
+    if message.from_user.id not in ping_users:
+        bot.reply_to(message, "Ти і так не пінгуєшся, сосі")
+        return
+    ping_users.remove(message.from_user.id)
+    set_config_value("PING_USERS", json.dumps(ping_users))
+    bot.reply_to(message, "Ти більше не пінгуєшся під час зниженого кд")
+
+
 @bot.message_handler(commands=["shablon"])
 def msg_shablon_info(message):
     url = get_config_value("URL")
@@ -693,6 +720,7 @@ def job_minute():
         while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
+        ping_users = json.loads(get_config_value("PING_USERS"))
         _, channel_id, proxies = fetch_me(url)
         history = fetch_channel(url, channel_id, proxies)
         for msg in history:
@@ -708,9 +736,16 @@ def job_minute():
                 continue
             if msg_sender == "event" and "successfully defeated" in msg_txt:
                 text = f"<b>Почалося знижене кд, гойда!</b>"
+                ping_list = to_matrix(ping_users, 5)
                 for chatid in DB_CHATS:
                     try:
-                        bot.send_message(chatid, text)
+                        m = bot.send_message(chatid, text)
+                        for ping_five in ping_list:
+                            txt = ''
+                            for user in ping_five:
+                                txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+                            bot.reply_to(m, txt)
+                            time.sleep(0.5)
                     except:
                         pass
             processed_messages.append(msg_time)
