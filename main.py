@@ -1,19 +1,20 @@
 import asyncio
 import json
 import math
-import random
 import re
 import time
 import traceback
 from datetime import datetime
 from io import StringIO, BytesIO
 from threading import Thread
+from urllib.parse import urlparse, parse_qs
 
 import PIL.Image
 import numpy as np
 import pycountry
 import schedule
 import telebot
+from bs4 import BeautifulSoup
 from curl_cffi import requests
 from flask import Flask, request
 from sqlalchemy import create_engine
@@ -51,14 +52,6 @@ bot.set_webhook(url=APP_URL, allowed_updates=['message', 'callback_query', 'chat
 cursor = create_engine(
     f'postgresql://postgres.hdahfrunlvoethhwinnc:gT77Av9pQ8IjleU2@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
     pool_recycle=280)
-all_proxies = [
-    {'http': 'http://136.144.52.41:443'},
-    {'http': 'http://72.10.164.178:19175'},
-    {'http': 'http://67.43.227.227:27921'},
-    {'http': 'http://160.86.242.23:8080'},
-    {'http': 'http://107.189.8.240:8080'},
-    {'http': 'http://141.145.197.152:8888'}
-]
 
 
 def get_config_value(key):
@@ -113,29 +106,37 @@ def link(canvas_char, url, x, y, zoom):
     return f'<a href="https://{url}/#{canvas_char},{x},{y},{zoom}">{x},{y}</a>'
 
 
+async def fetch_via_proxy(url):
+    async with requests.AsyncSession() as session:
+        endpoint = url.split('pixelplanet.fun')[1]
+        l = "https://plainproxies.com/resources/free-web-proxy"
+        resp = await session.get(l, impersonate="chrome110")
+        soup = BeautifulSoup(resp.text, 'lxml')
+        token = soup.find('input', {'name': '_token'})['value']
+        resp = await session.post(l, data={'_token': token, 'url': f'http://pixelplanet.fun{endpoint}'},
+                                  impersonate="chrome110")
+        r = parse_qs(urlparse(resp.url).query)['r'][0]
+        cpo = r[:30][:-1] + 'g'
+        l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
+        resp = await session.get(l, impersonate="chrome110")
+        return resp
+
+
 def fetch_me(url, canvas_char="d"):
     url = f"http://{url}/api/me"
     data = None
-    ret_proxies = None
     with requests.Session() as session:
-        if 'pixelplanet' in url:
-            random.shuffle(all_proxies)
-            for proxies in all_proxies:
-                try:
-                    resp = session.get(url, impersonate="chrome110", proxies=proxies, timeout=3)
-                    data = resp.json()
-                    ret_proxies = proxies
-                    break
-                except:
-                    time.sleep(1)
-        else:
-            for attempts in range(5):
-                try:
+        for attempts in range(5):
+            try:
+                if 'pixelplanet' in url:
+                    resp = asyncio.run(fetch_via_proxy(url))
+                else:
                     resp = session.get(url, impersonate="chrome110", timeout=3)
-                    data = resp.json()
-                    break
-                except:
-                    time.sleep(1)
+                data = resp.json()
+                break
+            except Exception as e:
+                bot.send_message(ME, str(e))
+                time.sleep(1)
         if data is None:
             raise Exception("Failed to fetch canvas")
         canvases = data["canvases"]
@@ -143,7 +144,7 @@ def fetch_me(url, canvas_char="d"):
         for key, canvas in canvases.items():
             if canvas["ident"] == canvas_char:
                 canvas["id"] = key
-                return canvas, channel_id, ret_proxies
+                return canvas, channel_id
         raise Exception("Canvas not found")
 
 
@@ -152,7 +153,10 @@ def fetch_ranking(url):
     with requests.Session() as session:
         for attempts in range(5):
             try:
-                resp = session.get(url, impersonate="chrome110")
+                if 'pixelplanet' in url:
+                    resp = asyncio.run(fetch_via_proxy(url))
+                else:
+                    resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 if "pixelya" in url:
                     return data["dailyCorRanking"]
@@ -163,12 +167,15 @@ def fetch_ranking(url):
         raise Exception("Rankings failed")
 
 
-def fetch_channel(url, channel_id, proxies):
+def fetch_channel(url, channel_id):
     url = f"http://{url}/api/chathistory?cid={channel_id}&limit=50"
     with requests.Session() as session:
         for attempts in range(5):
             try:
-                resp = session.get(url, impersonate="chrome110", proxies=proxies)
+                if 'pixelplanet' in url:
+                    resp = asyncio.run(fetch_via_proxy(url))
+                else:
+                    resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 return data["history"]
             except:
@@ -177,11 +184,14 @@ def fetch_channel(url, channel_id, proxies):
 
 
 async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-                height, new_colors, canvas_char, proxies):
+                height, new_colors, canvas_char):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     for attempts in range(5):
         try:
-            rsp = await sess.get(url, impersonate="chrome110", proxies=proxies)
+            if 'pixelplanet' in url:
+                rsp = await fetch_via_proxy(url)
+            else:
+                rsp = await sess.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -227,13 +237,10 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 return
         except:
             await asyncio.sleep(1)
-            if proxies is not None:
-                proxies = random.choice(all_proxies)
     result["error"] = True
 
 
-async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char,
-                   proxies):
+async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char):
     chunks_info.clear()
     result = {
         "error": False,
@@ -253,7 +260,7 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
             for ix in range(xc, wc + 1):
                 threads.append(
                     fetch(session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                          height, new_colors, canvas_char, proxies))
+                          height, new_colors, canvas_char))
         await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
@@ -265,7 +272,7 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
     return result
 
 
-async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, proxies):
+async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height, colors, url):
     canvasoffset = math.pow(canvas_size, 0.5)
     offset = int(-canvasoffset * canvasoffset / 2)
     xc = (start_x - offset) // 256
@@ -279,17 +286,20 @@ async def get_area_small(canvas_id, canvas_size, start_x, start_y, width, height
             for ix in range(xc, wc + 1):
                 threads.append(
                     fetch_small(session, canvas_id, canvasoffset, ix, iy, colors, url, img, start_x, start_y, width,
-                                height, proxies))
+                                height))
         await asyncio.gather(*threads)
     return img
 
 
 async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, img, start_x, start_y, width,
-                      height, proxies):
+                      height):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     for attempts in range(5):
         try:
-            rsp = await sess.get(url, impersonate="chrome110", proxies=proxies)
+            if 'pixelplanet' in url:
+                rsp = await fetch_via_proxy(url)
+            else:
+                rsp = await sess.get(url, impersonate="chrome110")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -317,8 +327,6 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
         except Exception as e:
             bot.send_message(ME, str(e))
             await asyncio.sleep(1)
-            if proxies is not None:
-                proxies = random.choice(all_proxies)
     raise Exception("Failed to fetch small area")
 
 
@@ -610,9 +618,9 @@ def handle_text(message, txt):
         x = int(parselink[1]) - 200
         y = int(parselink[2]) - 150
         canvas_char = parselink[0]
-        canvas, _, proxies = fetch_me(site, canvas_char)
+        canvas, _ = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site, proxies))
+        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
         img = PIL.Image.fromarray(img).convert('RGB')
         for attempts in range(5):
             try:
@@ -721,8 +729,8 @@ def job_minute():
             processed_messages.pop(0)
         url = get_config_value("URL")
         ping_users = json.loads(get_config_value("PING_USERS"))
-        _, channel_id, proxies = fetch_me(url)
-        history = fetch_channel(url, channel_id, proxies)
+        _, channel_id = fetch_me(url)
+        history = fetch_channel(url, channel_id)
         for msg in history:
             if 'pixelya' in url:
                 msg_time = msg[9]
@@ -769,7 +777,7 @@ def shablon_crop():
     y += box[1]
 
     img = np.array(img, dtype=np.uint8)
-    canvas, _, _ = fetch_me(url, canvas_char)
+    canvas, _ = fetch_me(url, canvas_char)
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
     img = PIL.Image.fromarray(img).convert('RGBA')
@@ -788,20 +796,6 @@ def shablon_crop():
     raise Exception("Failed to send file")
 
 
-def job_update_proxy():
-    global all_proxies
-    with requests.Session() as session:
-        for attempts in range(5):
-            try:
-                resp = session.get("https://get-proxies.onrender.com/list", impersonate="chrome110")
-                data = resp.json()
-                if len(data) > 0:
-                    all_proxies = data
-                return
-            except:
-                time.sleep(1)
-
-
 def job_hour():
     global is_running, updated_at, telegraph_url, top_three
     try:
@@ -818,13 +812,13 @@ def job_hour():
         img = np.array(get_pil(file), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
-        canvas, _, proxies = fetch_me(url, canvas_char)
+        canvas, _ = fetch_me(url, canvas_char)
         colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
             get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors,
-                     canvas_char, proxies))
+                     canvas_char))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
@@ -888,10 +882,7 @@ if __name__ == '__main__':
     scheduler2.every().day.at("23:00").do(job_day)
     scheduler3 = schedule.Scheduler()
     scheduler3.every(1).minutes.do(job_minute)
-    scheduler4 = schedule.Scheduler()
-    scheduler4.every(3).hours.do(job_update_proxy)
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
-    Thread(target=updater, args=(scheduler4,)).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
