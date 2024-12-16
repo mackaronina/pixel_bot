@@ -10,3 +10,4 @@ PyMySQL==1.1.0
 telegraph==2.2.0
 pycountry==24.6.1
 beautifulsoup4==4.12.2
+lxml==4.9.3
