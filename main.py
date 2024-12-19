@@ -131,7 +131,7 @@ def fetch_me(url, canvas_char="d"):
                 if 'pixelplanet' in url:
                     resp = asyncio.run(fetch_via_proxy(url))
                 else:
-                    resp = session.get(url, impersonate="chrome110", timeout=3)
+                    resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 break
             except Exception as e:
