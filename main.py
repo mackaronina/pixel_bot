@@ -131,7 +131,7 @@ def fetch_me(url, canvas_char="d"):
                 if 'pixelplanet' in url:
                     resp = asyncio.run(fetch_via_proxy(url))
                 else:
-                    resp = session.get(url, impersonate="chrome110", timeout=3)
+                    resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 break
             except Exception as e:
@@ -575,6 +575,30 @@ def void_off(message):
     bot.reply_to(message, "Ти більше не пінгуєшся під час зниженого кд")
 
 
+@bot.message_handler(commands=["pin_on"])
+def pin_on(message):
+    if not check_access(message):
+        return
+    pin = eval(get_config_value("PIN"))
+    if pin:
+        bot.reply_to(message, "Бот і так робить закріп, сосі")
+        return
+    set_config_value("PIN", True)
+    bot.reply_to(message, "Бот тепер закріплює повідомлення про войд")
+
+
+@bot.message_handler(commands=["pin_off"])
+def pin_off(message):
+    if not check_access(message):
+        return
+    pin = eval(get_config_value("PIN"))
+    if not pin:
+        bot.reply_to(message, "Бот і так не робить закріпу, сосі")
+        return
+    set_config_value("PIN", False)
+    bot.reply_to(message, "Бот більше не закріплює повідомлення про войд")
+
+
 @bot.message_handler(commands=["shablon"])
 def msg_shablon_info(message):
     url = get_config_value("URL")
@@ -729,7 +753,9 @@ def job_minute():
             processed_messages.pop(0)
         url = get_config_value("URL")
         ping_users = json.loads(get_config_value("PING_USERS"))
-        _, channel_id = fetch_me(url)
+        canvas_char = get_config_value("CANVAS")
+        pin = eval(get_config_value("PIN"))
+        canvas, channel_id = fetch_me(url, canvas_char)
         history = fetch_channel(url, channel_id)
         for msg in history:
             if 'pixelya' in url:
@@ -745,17 +771,58 @@ def job_minute():
             if msg_sender == "event" and "successfully defeated" in msg_txt:
                 text = f"<b>Почалося знижене кд, гойда!</b>"
                 ping_list = to_matrix(ping_users, 5)
-                for chatid in DB_CHATS:
-                    try:
+                chatid = -1002037657920
+                try:
+                    m = bot.send_message(chatid, text)
+                    for ping_five in ping_list:
+                        txt = ''
+                        for user in ping_five:
+                            txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+                        bot.reply_to(m, txt)
+                        time.sleep(0.5)
+                except:
+                    pass
+                # новое
+                text = f"<b>Почалося знижене кд, гойда!</b>\nОтримай актуальний шаблон командою /shablon"
+                sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
+                for chunk in sorted_chunks:
+                    if chunk['key'] in top_three.keys():
+                        chunk['change'] += top_three[chunk['key']] * 100000
+                sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"], reverse=True)
+                photo = None
+                if len(sorted_chunks) > 0:
+                    chunk = sorted_chunks[0]
+                    text += f"\nНайгарячіша точка {chunk['pixel_link']}"
+                    x = int(chunk['key'].split('_')[0]) - 200
+                    y = int(chunk['key'].split('_')[1]) - 150
+                    colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+                    img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
+                    img = PIL.Image.fromarray(img).convert('RGB')
+                    for attempts in range(5):
+                        try:
+                            m = bot.send_photo(SERVICE_CHATID, send_pil(img))
+                            photo = m.photo[-1].file_id
+                            break
+                        except:
+                            time.sleep(1)
+                ping_list = to_matrix(ping_users, 5)
+                chatid = SERVICE_CHATID
+                try:
+                    if photo is None:
                         m = bot.send_message(chatid, text)
-                        for ping_five in ping_list:
-                            txt = ''
-                            for user in ping_five:
-                                txt += f'<a href="tg://user?id={user}">ㅤ</a>'
-                            bot.reply_to(m, txt)
-                            time.sleep(0.5)
-                    except:
-                        pass
+                    else:
+                        m = bot.send_photo(chatid, photo, caption=text)
+                    if pin:
+                        bot.pin_chat_message(chatid, m.id)
+                    for ping_five in ping_list:
+                        txt = ''
+                        for user in ping_five:
+                            txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+                        bot.reply_to(m, txt)
+                        time.sleep(0.5)
+                except:
+                    pass
+
             processed_messages.append(msg_time)
     except Exception as e:
         bot.send_message(ME, str(e))
