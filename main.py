@@ -769,6 +769,7 @@ def job_minute():
             if msg_time in processed_messages or time.time() - msg_time > 180:
                 continue
             if msg_sender == "event" and "successfully defeated" in msg_txt:
+                """
                 text = f"<b>Почалося знижене кд, гойда!</b>"
                 ping_list = to_matrix(ping_users, 5)
                 chatid = -1002037657920
@@ -782,8 +783,9 @@ def job_minute():
                         time.sleep(0.5)
                 except:
                     pass
+                """
                 # новое
-                text = f"<b>Почалося знижене кд, гойда!</b>\nОтримай актуальний шаблон командою /shablon"
+                text = f"<b>Почалося знижене кд, гойда!</b>"
                 sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
                 for chunk in sorted_chunks:
                     if chunk['key'] in top_three.keys():
@@ -792,7 +794,7 @@ def job_minute():
                 photo = None
                 if len(sorted_chunks) > 0:
                     chunk = sorted_chunks[0]
-                    text += f"\nНайгарячіша точка {chunk['pixel_link']}"
+                    text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів не по шаблону)"
                     x = int(chunk['key'].split('_')[0]) - 200
                     y = int(chunk['key'].split('_')[1]) - 150
                     colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
@@ -805,23 +807,22 @@ def job_minute():
                             break
                         except:
                             time.sleep(1)
+                text += "\n\nОтримай актуальний шаблон командою /shablon"
                 ping_list = to_matrix(ping_users, 5)
-                chatid = SERVICE_CHATID
-                try:
-                    if photo is None:
-                        m = bot.send_message(chatid, text)
-                    else:
-                        m = bot.send_photo(chatid, photo, caption=text)
-                    if pin:
-                        bot.pin_chat_message(chatid, m.id)
-                    for ping_five in ping_list:
-                        txt = ''
-                        for user in ping_five:
-                            txt += f'<a href="tg://user?id={user}">ㅤ</a>'
-                        bot.reply_to(m, txt)
-                        time.sleep(0.5)
-                except:
-                    pass
+                for chatid in DB_CHATS:
+                    try:
+                        if photo is None:
+                            m = bot.send_message(chatid, text)
+                        else:
+                            m = bot.send_photo(chatid, photo, caption=text)
+                        for ping_five in ping_list:
+                            txt = ''
+                            for user in ping_five:
+                                txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+                            bot.reply_to(m, txt)
+                            time.sleep(0.5)
+                    except:
+                        pass
 
             processed_messages.append(msg_time)
     except Exception as e:
