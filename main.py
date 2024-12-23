@@ -747,6 +747,21 @@ def job_day():
         bot.send_message(ME, str(e))
 
 
+def get_hot_point():
+    sorted_chunks = [chunk.copy() for chunk in chunks_info if chunk["change"] > 0]
+    for chunk in sorted_chunks:
+        if chunk['key'] in top_three.keys():
+            chunk['change'] += top_three[chunk['key']] * 100000
+    sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"], reverse=True)
+    if len(sorted_chunks) > 0:
+        return sorted_chunks[0]
+    sorted_chunks = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0]
+    sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["diff"], reverse=True)
+    if len(sorted_chunks) > 0:
+        return sorted_chunks[0]
+    return None
+
+
 def job_minute():
     try:
         while len(processed_messages) > 100:
@@ -769,34 +784,13 @@ def job_minute():
             if msg_time in processed_messages or time.time() - msg_time > 180:
                 continue
             if msg_sender == "event" and "successfully defeated" in msg_txt:
-                """
                 text = f"<b>Почалося знижене кд, гойда!</b>"
-                ping_list = to_matrix(ping_users, 5)
-                chatid = -1002037657920
-                try:
-                    m = bot.send_message(chatid, text)
-                    for ping_five in ping_list:
-                        txt = ''
-                        for user in ping_five:
-                            txt += f'<a href="tg://user?id={user}">ㅤ</a>'
-                        bot.reply_to(m, txt)
-                        time.sleep(0.5)
-                except:
-                    pass
-                """
-                # новое
-                text = f"<b>Почалося знижене кд, гойда!</b>"
-                sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
-                for chunk in sorted_chunks:
-                    if chunk['key'] in top_three.keys():
-                        chunk['change'] += top_three[chunk['key']] * 100000
-                sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"], reverse=True)
                 photo = None
-                if len(sorted_chunks) > 0:
-                    chunk = sorted_chunks[0]
-                    text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів не по шаблону)"
-                    x = int(chunk['key'].split('_')[0]) - 200
-                    y = int(chunk['key'].split('_')[1]) - 150
+                chunk = get_hot_point()
+                if chunk is not None:
+                    text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
+                    x = int(chunk['key'].split('_')[0]) + 128 - 200
+                    y = int(chunk['key'].split('_')[1]) + 128 - 150
                     colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
                     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
                     img = PIL.Image.fromarray(img).convert('RGB')
