@@ -784,6 +784,8 @@ def job_minute():
             if msg_time in processed_messages or time.time() - msg_time > 180:
                 continue
             if msg_sender == "event" and "successfully defeated" in msg_txt:
+                while is_running:
+                    time.sleep(1)
                 text = f"<b>Почалося знижене кд, гойда!</b>"
                 photo = None
                 chunk = get_hot_point()
