@@ -201,7 +201,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             else:
                 chunk_diff = 0
                 chunk_size = 0
-                chunk_pixel = None
+                chunk_pixel_link = None
+                chunk_pixel_point = None
 
                 for i, b in enumerate(data):
                     tx = off_x + i % 256
@@ -217,7 +218,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     map_color = colors[bcl]
                     if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                         if chunk_diff == 0:
-                            chunk_pixel = link(canvas_char, base_url, tx, ty, 25)
+                            chunk_pixel_link = link(canvas_char, base_url, tx, ty, 25)
+                            chunk_pixel_point = f"{tx}_{ty}"
                         chunk_diff += 1
                         img[x, y] = map_color
                     else:
@@ -225,13 +227,15 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     chunk_size += 1
 
                 if chunk_diff > 10000:
-                    chunk_pixel = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
+                    chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
+                    chunk_pixel_point = f"{off_x + 128}_{off_y + 128}"
                 result["diff"] += chunk_diff
                 result["total_size"] += chunk_size
                 chunks_info.append({
                     "key": f"{off_x}_{off_y}",
                     "diff": chunk_diff,
-                    "pixel_link": chunk_pixel,
+                    "pixel_link": chunk_pixel_link,
+                    "pixel_point": chunk_pixel_point,
                     "change": 0
                 })
                 return
@@ -791,8 +795,8 @@ def job_minute():
                 chunk = get_hot_point()
                 if chunk is not None:
                     text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
-                    x = int(chunk['key'].split('_')[0]) + 128 - 200
-                    y = int(chunk['key'].split('_')[1]) + 128 - 150
+                    x = int(chunk['pixel_point'].split('_')[0]) + 128 - 200
+                    y = int(chunk['pixel_point'].split('_')[1]) + 128 - 150
                     colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
                     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
                     img = PIL.Image.fromarray(img).convert('RGB')
