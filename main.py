@@ -134,8 +134,11 @@ def fetch_me(url, canvas_char="d"):
                     resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 break
-            except Exception as e:
-                bot.send_message(ME, str(e))
+            except:
+                sio = StringIO(traceback.format_exc())
+                sio.name = 'log.txt'
+                sio.seek(0)
+                bot.send_document(ME, sio)
                 time.sleep(1)
         if data is None:
             raise Exception("Failed to fetch canvas")
@@ -639,7 +642,7 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
-    elif re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low):
+    elif re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low) and message.photo is None:
         parselink = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
         site = parselink[0]
         parselink = parselink[1].replace('#', '').split(',')
@@ -773,7 +776,6 @@ def job_minute():
         url = get_config_value("URL")
         ping_users = json.loads(get_config_value("PING_USERS"))
         canvas_char = get_config_value("CANVAS")
-        pin = eval(get_config_value("PIN"))
         canvas, channel_id = fetch_me(url, canvas_char)
         history = fetch_channel(url, channel_id)
         for msg in history:
