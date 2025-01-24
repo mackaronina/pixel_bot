@@ -115,6 +115,10 @@ async def fetch_via_proxy(url):
         token = soup.find('input', {'name': '_token'})['value']
         resp = await session.post(l, data={'_token': token, 'url': f'http://pixelplanet.fun{endpoint}'},
                                   impersonate="chrome110")
+        sio = StringIO(resp.text)
+        sio.name = 'page.txt'
+        sio.seek(0)
+        bot.send_document(ME, sio)
         r = parse_qs(urlparse(resp.url).query)['r'][0]
         cpo = r[:30][:-1] + 'g'
         l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
@@ -134,11 +138,8 @@ def fetch_me(url, canvas_char="d"):
                     resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 break
-            except:
-                sio = StringIO(traceback.format_exc())
-                sio.name = 'log.txt'
-                sio.seek(0)
-                bot.send_document(ME, sio)
+            except Exception as e:
+                bot.send_message(ME, str(e))
                 time.sleep(1)
         if data is None:
             raise Exception("Failed to fetch canvas")
