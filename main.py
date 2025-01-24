@@ -797,8 +797,8 @@ def job_minute():
                 chunk = get_hot_point()
                 if chunk is not None:
                     text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
-                    x = int(chunk['pixel_point'].split('_')[0]) + 128 - 200
-                    y = int(chunk['pixel_point'].split('_')[1]) + 128 - 150
+                    x = int(chunk['pixel_point'].split('_')[0]) - 200
+                    y = int(chunk['pixel_point'].split('_')[1]) - 150
                     colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
                     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
                     img = PIL.Image.fromarray(img).convert('RGB')
