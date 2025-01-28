@@ -851,7 +851,7 @@ def get_shablon_pic():
     bio = BytesIO(downloaded_file)
     bio.name = f'{x}_{y}.png'
     bio.seek(0, 0)
-    return send_file(bio, mimetype='image/png')
+    return send_file(bio, mimetype='image/png', as_attachment=True, download_name=bio.name)
 
 
 def updater(scheduler):
