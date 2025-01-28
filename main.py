@@ -17,7 +17,7 @@ import schedule
 import telebot
 from bs4 import BeautifulSoup
 from curl_cffi import requests
-from flask import Flask, request
+from flask import Flask, request, send_file
 from sqlalchemy import create_engine
 from telebot import apihelper, types
 from telegraph import Telegraph
@@ -839,6 +839,19 @@ def get_message():
 @app.route('/')
 def get_ok():
     return 'ok', 200
+
+
+@app.route('/shablon')
+def get_shablon_pic():
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
+    file = get_config_value("FILE")
+    file_info = bot.get_file(file)
+    downloaded_file = bot.download_file(file_info.file_path)
+    bio = BytesIO(downloaded_file)
+    bio.name = f'{x}_{y}.png'
+    bio.seek(0, 0)
+    return send_file(bio, mimetype='image/png')
 
 
 def updater(scheduler):
