@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import math
 import re
@@ -68,6 +69,43 @@ def set_config_value(key, value):
     else:
         cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
     old_chunks_diff.clear()
+
+
+def get_medal_user(user_id):
+    data = cursor.execute(f"SELECT name, medal_list FROM medals WHERE id = {user_id}").fetchone()
+    if data is None:
+        return None
+    else:
+        return {
+            'name': data[0],
+            'medal_list': json.loads(data[1])
+        }
+
+
+def get_medal_users():
+    data = cursor.execute(f"SELECT name, medal_list FROM medals").fetchall()
+    if data is None:
+        return []
+    else:
+        mas = [{'name': d[0], 'medal_list': json.loads(d[1])} for d in data]
+        mas = sorted(mas, key=lambda user: len(user['medal_list']), reverse=True)
+        return mas
+
+
+def update_medal_user(user_id, name, medal_list):
+    medal_list = [html.escape(medal, quote=True) for medal in medal_list]
+    name = html.escape(name, quote=True)
+    cursor.execute(
+        f"UPDATE medals SET name = %s, medal_list = %s WHERE id = {user_id}", name,
+        json.dumps(medal_list, ensure_ascii=False))
+
+
+def create_medal_user(user_id, name, medal_list):
+    medal_list = [html.escape(medal, quote=True) for medal in medal_list]
+    name = html.escape(name, quote=True)
+    cursor.execute(
+        f"INSERT INTO medals (id, name, medal_list) VALUES ({user_id}, %s, %s)", name,
+        json.dumps(medal_list, ensure_ascii=False))
 
 
 def answer_callback_query(call, txt, show=False):
@@ -388,6 +426,10 @@ def extract_arg(arg):
     return arg.split()[1:]
 
 
+def extract_text(arg):
+    return ' '.join(arg.split()[1:])
+
+
 def format_change(a):
     if a > 0:
         return f"+{a}"
@@ -475,6 +517,88 @@ def generate_coords_text_telegraph(sort_by):
             for i, chunk in enumerate(sorted_chunks):
                 text += f"{i + 1}.  {chunk['pixel_link']}  {chunk['diff']}  {format_change(chunk['change'])}<br>"
     return text
+
+
+@bot.message_handler(commands=["medal_top"])
+def msg_top(message):
+    data = get_medal_users()
+    if len(data) == 0:
+        bot.reply_to(message, 'Медалей нема')
+        return
+    text = 'Ці живчики мають найбільше медалей:\n\n'
+    for i, user in enumerate(data):
+        if i == 10:
+            break
+        if i == 0:
+            text += f"🏆 <b>{user['name']}</b>  {len(user['medal_list'])} 🎖\n"
+        else:
+            text += f"{i + 1}.  {user['name']}  {len(user['medal_list'])} 🎖\n"
+    bot.reply_to(message, text)
+
+
+@bot.message_handler(commands=["medal"])
+def msg_medal(message):
+    if message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+        user_id = message.from_user.id
+    else:
+        user_id = message.reply_to_message.from_user.id
+    user = get_medal_user(user_id)
+    if user is None or len(user['medal_list']) < 1:
+        if user_id == message.from_user.id:
+            text = "Ти лох без медалей\n\n<i>Цією командою можна відповісти на чиєсь повідомлення щоб подивитись чужі медалі</i>"
+        else:
+            text = "У цього лоха нема медалей"
+    else:
+        text = f"<b>Всього медалей у {user['name']}:  {len(user['medal_list'])} 🎖</b>\n\n"
+        for medal in user['medal_list']:
+            text += f'🥇  {medal}\n'
+    bot.reply_to(message, text)
+
+
+@bot.message_handler(commands=["medal_plus"])
+def msg_medal_plus(message):
+    if not check_access(message):
+        return
+    medal_name = extract_text(message.text)
+    if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+        bot.reply_to(message,
+                     "Формат команди: /medal_plus [назва медалі]\nЦією командою можна видати медаль відповіддю на повідомлення людини, яка цю медаль отримає\nПриклади:\n/medal_plus ІДІ НАХУЙ")
+        return
+    user_id = message.reply_to_message.from_user.id
+    user = get_medal_user(user_id)
+    if user is None:
+        create_medal_user(user_id, message.from_user.full_name, [medal_name])
+    else:
+        if medal_name.lower() in [m.lower() for m in user['medal_list']]:
+            bot.reply_to(message, 'У нього вже є така медаль, сосі')
+            return
+        user['medal_list'].append(medal_name)
+        update_medal_user(user_id, message.from_user.full_name, user['medal_list'])
+    bot.reply_to(message, "Медаль видано")
+
+
+@bot.message_handler(commands=["medal_minus"])
+def msg_medal_minus(message):
+    if not check_access(message):
+        return
+    medal_name = extract_text(message.text)
+    if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+        bot.reply_to(message,
+                     "Формат команди: /medal_minus [назва медалі]\nЦією командою можна забрати медаль відповіддю на повідомлення людини, у якої ця медаль є\nПриклади:\n/medal_minus ІДІ НАХУЙ")
+        return
+    user_id = message.reply_to_message.from_user.id
+    user = get_medal_user(user_id)
+    if user is None:
+        bot.reply_to(message, 'У нього нема медалей, сосі')
+        return
+    new_list = [m.lower() for m in user['medal_list']]
+    new_name = medal_name.lower()
+    if new_name not in new_list:
+        bot.reply_to(message, 'У нього нема такої медалі, сосі')
+        return
+    del user['medal_list'][new_list.index(new_name)]
+    update_medal_user(user_id, message.from_user.full_name, user['medal_list'])
+    bot.reply_to(message, "Медаль забрано")
 
 
 @bot.message_handler(commands=["map"])
