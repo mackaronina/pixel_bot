@@ -533,7 +533,7 @@ def msg_top(message):
     bot.reply_to(message, text)
 
 
-@bot.message_handler(commands=["medal"])
+@bot.message_handler(commands=["medal_info"])
 def msg_medal(message):
     if message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
         user_id = message.from_user.id
