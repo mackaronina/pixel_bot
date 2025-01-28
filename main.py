@@ -522,12 +522,9 @@ def generate_coords_text_telegraph(sort_by):
 @bot.message_handler(commands=["medal_top"])
 def msg_top(message):
     data = get_medal_users()
-    if len(data) == 0:
-        bot.reply_to(message, 'Медалей нема')
-        return
     text = 'Ці живчики мають найбільше медалей:\n\n'
     for i, user in enumerate(data):
-        if i == 10:
+        if i == 10 or len(user['medal_list']) < 1:
             break
         if i == 0:
             text += f"🏆 <b>{user['name']}</b>  {len(user['medal_list'])} 🎖\n"
@@ -567,13 +564,13 @@ def msg_medal_plus(message):
     user_id = message.reply_to_message.from_user.id
     user = get_medal_user(user_id)
     if user is None:
-        create_medal_user(user_id, message.from_user.full_name, [medal_name])
+        create_medal_user(user_id, message.reply_to_message.from_user.full_name, [medal_name])
     else:
         if medal_name.lower() in [m.lower() for m in user['medal_list']]:
             bot.reply_to(message, 'У нього вже є така медаль, сосі')
             return
         user['medal_list'].append(medal_name)
-        update_medal_user(user_id, message.from_user.full_name, user['medal_list'])
+        update_medal_user(user_id, message.reply_to_message.from_user.full_name, user['medal_list'])
     bot.reply_to(message, "Медаль видано")
 
 
@@ -597,7 +594,7 @@ def msg_medal_minus(message):
         bot.reply_to(message, 'У нього нема такої медалі, сосі')
         return
     del user['medal_list'][new_list.index(new_name)]
-    update_medal_user(user_id, message.from_user.full_name, user['medal_list'])
+    update_medal_user(user_id, message.reply_to_message.from_user.full_name, user['medal_list'])
     bot.reply_to(message, "Медаль забрано")
 
 
