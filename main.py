@@ -855,12 +855,12 @@ def get_shablon_pictrue():
 
 
 def urls_to_html(text):
-    if '<a>' in text:
-        return text
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
     urls = [x[0] for x in re.findall(regex, text)]
     for url in urls:
-        text = text.replace(url, f'<a href="{url}">{url}</a>')
+        pos = text.find(url)
+        if pos != -1 and text[pos - 1] != '"':
+            text = text.replace(url, f'<a href="{url}">{url}</a>')
     return text
 
 
