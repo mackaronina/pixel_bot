@@ -854,6 +854,16 @@ def get_shablon_pictrue():
     return send_file(bio, mimetype='image/png', as_attachment=True, download_name=bio.name)
 
 
+def urls_to_html(text):
+    if '<a>' in text:
+        return text
+    regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
+    urls = [x[0] for x in re.findall(regex, text)]
+    for url in urls:
+        text = text.replace(url, f'<a href="{url}">{url}</a>')
+    return text
+
+
 @app.route('/shablon_info')
 def get_shablon_info():
     x = int(get_config_value("X"))
