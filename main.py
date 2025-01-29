@@ -858,7 +858,13 @@ def get_shablon_pictrue():
 def get_shablon_info():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    return jsonify({"x": x, "y": y})
+    text = ''
+    msg = bot.get_chat(DB_CHATS[1]).pinned_message
+    if msg is not None and msg.text is not None:
+        text = msg.html_text
+    elif msg is not None and msg.caption is not None:
+        text = msg.html_caption
+    return jsonify({"x": x, "y": y, "text": text})
 
 
 def updater(scheduler):
