@@ -871,9 +871,9 @@ def get_shablon_info():
     text = ''
     msg = bot.get_chat(DB_CHATS[1]).pinned_message
     if msg is not None and msg.text is not None:
-        text = msg.html_text
+        text = urls_to_html(msg.html_text)
     elif msg is not None and msg.caption is not None:
-        text = msg.html_caption
+        text = urls_to_html(msg.html_caption)
     return jsonify({"x": x, "y": y, "text": text})
 
 
