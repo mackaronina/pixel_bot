@@ -17,7 +17,8 @@ import schedule
 import telebot
 from bs4 import BeautifulSoup
 from curl_cffi import requests
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
 from sqlalchemy import create_engine
 from telebot import apihelper, types
 from telegraph import Telegraph
@@ -46,6 +47,7 @@ class ExHandler(telebot.ExceptionHandler):
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=10, parse_mode='HTML', exception_handler=ExHandler())
 apihelper.RETRY_ON_ERROR = True
 app = Flask(__name__)
+CORS(app)
 bot.remove_webhook()
 bot.set_webhook(url=APP_URL, allowed_updates=['message', 'callback_query', 'chat_member', 'message_reaction',
                                               'message_reaction_count'])
@@ -841,17 +843,22 @@ def get_ok():
     return 'ok', 200
 
 
-@app.route('/shablon')
-def get_shablon_pic():
-    x = int(get_config_value("X"))
-    y = int(get_config_value("Y"))
+@app.route('/shablon_picture')
+def get_shablon_pictrue():
     file = get_config_value("FILE")
     file_info = bot.get_file(file)
     downloaded_file = bot.download_file(file_info.file_path)
     bio = BytesIO(downloaded_file)
-    bio.name = f'{x}_{y}.png'
+    bio.name = f'result.png'
     bio.seek(0, 0)
     return send_file(bio, mimetype='image/png', as_attachment=True, download_name=bio.name)
+
+
+@app.route('/shablon_info')
+def get_shablon_info():
+    x = int(get_config_value("X"))
+    y = int(get_config_value("Y"))
+    return jsonify({"x": x, "y": y})
 
 
 def updater(scheduler):

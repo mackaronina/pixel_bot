@@ -11,3 +11,4 @@ telegraph==2.2.0
 pycountry==24.6.1
 beautifulsoup4==4.12.2
 lxml==4.9.3
+Flask-Cors==5.0.0
