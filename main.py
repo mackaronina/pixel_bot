@@ -219,7 +219,8 @@ def fetch_channel(url, channel_id):
                     resp = session.get(url, impersonate="chrome110")
                 data = resp.json()
                 return data["history"]
-            except:
+            except Exception as e:
+                bot.send_message(ME, str(e))
                 time.sleep(1)
         raise Exception("Chat history failed")
 
