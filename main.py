@@ -767,6 +767,8 @@ def handle_text(message, txt):
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
     elif re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low) and message.photo is None:
+        if is_running:
+            return
         parselink = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
         site = parselink[0]
         parselink = parselink[1].replace('#', '').split(',')
