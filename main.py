@@ -159,9 +159,9 @@ async def fetch_via_proxy(url):
         r = parse_qs(urlparse(resp.url).query)['r'][0]
         cpo = r[:30][:-1] + 'g'
         if '&' in endpoint:
-            l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
-        else:
             l = f"https://azureserv.com{endpoint}&__cpo={cpo}"
+        else:
+            l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
         resp = await session.get(l, impersonate="chrome110")
         return resp
 
