@@ -695,6 +695,11 @@ def void_on(message):
     bot.reply_to(message, "Ти тепер пінгуєшся під час зниженого кд")
 
 
+@bot.message_handler(commands=["test"])
+def test(message):
+    bot.reply_to(message, str(get_hot_point()))
+
+
 @bot.message_handler(commands=["void_off"])
 def void_off(message):
     ping_users = json.loads(get_config_value("PING_USERS"))
