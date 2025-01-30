@@ -217,10 +217,15 @@ def fetch_channel(url, channel_id):
                     resp = asyncio.run(fetch_via_proxy(url))
                 else:
                     resp = session.get(url, impersonate="chrome110")
+                sio = StringIO(resp.text)
+                sio.name = 'resp.txt'
+                sio.seek(0)
+                bot.send_document(ME, sio)
+                bot.send_message(ME, url)
+                bot.send_message(ME, channel_id)
                 data = resp.json()
                 return data["history"]
-            except Exception as e:
-                bot.send_message(ME, str(e))
+            except:
                 time.sleep(1)
         raise Exception("Chat history failed")
 
