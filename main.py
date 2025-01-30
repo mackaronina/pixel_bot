@@ -158,7 +158,10 @@ async def fetch_via_proxy(url):
                                   impersonate="chrome110")
         r = parse_qs(urlparse(resp.url).query)['r'][0]
         cpo = r[:30][:-1] + 'g'
-        l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
+        if '&' in endpoint:
+            l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
+        else:
+            l = f"https://azureserv.com{endpoint}&__cpo={cpo}"
         resp = await session.get(l, impersonate="chrome110")
         return resp
 
@@ -217,12 +220,6 @@ def fetch_channel(url, channel_id):
                     resp = asyncio.run(fetch_via_proxy(url))
                 else:
                     resp = session.get(url, impersonate="chrome110")
-                sio = StringIO(resp.text)
-                sio.name = 'resp.txt'
-                sio.seek(0)
-                bot.send_document(ME, sio)
-                bot.send_message(ME, url)
-                bot.send_message(ME, channel_id)
                 data = resp.json()
                 return data["history"]
             except:
