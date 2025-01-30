@@ -938,9 +938,9 @@ def get_hot_point():
         if chunk["key"] in top_three.keys():
             chunk["combo"] += top_three[chunk["key"]]
 
-    max_change = max([chunk["change"] for chunk in chunks_info if chunk["change"] >= 0])
-    max_diff = max([chunk["diff"] for chunk in chunks_info])
-    max_combo = max([chunk["combo"] for chunk in chunks_info])
+    max_change = max([chunk["change"] for chunk in chunks_copy if chunk["change"] >= 0])
+    max_diff = max([chunk["diff"] for chunk in chunks_copy])
+    max_combo = max([chunk["combo"] for chunk in chunks_copy])
 
     return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_change, max_diff, max_combo), reverse=True)[0]
 
