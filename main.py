@@ -149,16 +149,13 @@ def link(canvas_char, url, x, y, zoom):
 async def fetch_via_proxy(url):
     async with requests.AsyncSession() as session:
         endpoint = url.split('pixelplanet.fun')[1]
-        l = "https://plainproxies.com/resources/free-web-proxy"
+        l = "https://proxypal.net"
         resp = await session.get(l, impersonate="chrome110")
         soup = BeautifulSoup(resp.text, 'lxml')
         token = soup.find('input', {'name': '_token'})['value']
+        l = "https://proxypal.net/proxy"
         resp = await session.post(l, data={'_token': token, 'url': f'http://pixelplanet.fun{endpoint}'},
                                   impersonate="chrome110")
-        sio = StringIO(resp.text)
-        sio.name = 'page.txt'
-        sio.seek(0)
-        bot.send_document(ME, sio)
         r = parse_qs(urlparse(resp.url).query)['r'][0]
         cpo = r[:30][:-1] + 'g'
         l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
@@ -912,19 +909,35 @@ def job_day():
         bot.send_message(ME, str(e))
 
 
+def calc_score(chunk, max_change, max_diff, max_combo):
+    a = 1
+    if max_change > 0 and chunk["change"] > 0:
+        a = round((chunk["change"] / max_change) * 100)
+    b = 1
+    if max_diff > 0 and chunk["diff"] > 0:
+        b = round((chunk["diff"] / max_diff) * 100)
+    c = 1
+    if max_combo > 0 and chunk["combo"] > 0:
+        c = round((chunk["combo"] / max_combo) * 100)
+    return a * b * c
+
+
 def get_hot_point():
-    sorted_chunks = [chunk.copy() for chunk in chunks_info if chunk["change"] > 0]
-    for chunk in sorted_chunks:
-        if chunk['key'] in top_three.keys():
-            chunk['change'] += top_three[chunk['key']] * 100000
-    sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"], reverse=True)
-    if len(sorted_chunks) > 0:
-        return sorted_chunks[0]
-    sorted_chunks = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0]
-    sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["diff"], reverse=True)
-    if len(sorted_chunks) > 0:
-        return sorted_chunks[0]
-    return None
+    if len(chunks_info) == 0:
+        return None
+    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0]
+    if len(chunks_copy) == 0:
+        return None
+    for chunk in chunks_copy:
+        chunk["combo"] = 0
+        if chunk["key"] in top_three.keys():
+            chunk["combo"] += top_three[chunk["key"]]
+
+    max_change = max([chunk["change"] for chunk in chunks_info if chunk["change"] >= 0])
+    max_diff = max([chunk["diff"] for chunk in chunks_info])
+    max_combo = max([chunk["combo"] for chunk in chunks_info])
+
+    return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_change, max_diff, max_combo), reverse=True)[0]
 
 
 def job_minute():
