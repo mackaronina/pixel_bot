@@ -139,7 +139,7 @@ def new_color(color):
     R = R1 + (R2 - R1) * Blend
     G = G1 + (G2 - G1) * Blend
     B = B1 + (B2 - B1) * Blend
-    return np.array([R, G, B, 255], dtype=np.uint8)
+    return np.array([R, G, B], dtype=np.uint8)
 
 
 def link(canvas_char, url, x, y, zoom):
@@ -257,7 +257,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     x = ty - start_y
                     y = tx - start_x
                     color = img[x, y]
-                    if color[3] < 255:
+                    if color[0] == 253:
                         continue
                     map_color = colors[bcl]
                     if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
@@ -378,9 +378,9 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
     raise Exception("Failed to fetch small area")
 
 
-def convert_color(color, colors):
+def convert_color(color, colors, transparent_color):
     if color[3] < 255:
-        return color
+        return transparent_color
     if check_in(color, colors):
         return color
     dists = []
@@ -695,11 +695,6 @@ def void_on(message):
     bot.reply_to(message, "Ти тепер пінгуєшся під час зниженого кд")
 
 
-@bot.message_handler(commands=["test"])
-def test(message):
-    bot.reply_to(message, str(get_hot_point()))
-
-
 @bot.message_handler(commands=["void_off"])
 def void_off(message):
     ping_users = json.loads(get_config_value("PING_USERS"))
@@ -783,7 +778,7 @@ def handle_text(message, txt):
         canvas, _ = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
         img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
-        img = PIL.Image.fromarray(img).convert('RGB')
+        img = PIL.Image.fromarray(img)
         for attempts in range(5):
             try:
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
@@ -941,7 +936,7 @@ def get_hot_point():
     for chunk in chunks_copy:
         chunk["combo"] = 0
         if chunk["key"] in top_three.keys():
-            chunk["combo"] += top_three[chunk["key"]]
+            chunk["combo"] = top_three[chunk["key"]] - 1
 
     max_change = max([chunk["change"] for chunk in chunks_copy if chunk["change"] >= 0])
     max_diff = max([chunk["diff"] for chunk in chunks_copy])
@@ -982,7 +977,7 @@ def job_minute():
                     y = int(chunk['pixel_point'].split('_')[1]) - 150
                     colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
                     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
-                    img = PIL.Image.fromarray(img).convert('RGB')
+                    img = PIL.Image.fromarray(img)
                     for attempts in range(5):
                         try:
                             m = bot.send_photo(SERVICE_CHATID, send_pil(img))
@@ -1008,8 +1003,11 @@ def job_minute():
                         pass
 
             processed_messages.append(msg_time)
-    except Exception as e:
-        bot.send_message(ME, str(e))
+    except:
+        sio = StringIO(traceback.format_exc())
+        sio.name = 'log.txt'
+        sio.seek(0)
+        bot.send_document(ME, sio)
 
 
 def shablon_crop():
@@ -1030,8 +1028,9 @@ def shablon_crop():
     img = np.array(img, dtype=np.uint8)
     canvas, _ = fetch_me(url, canvas_char)
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
-    img = np.apply_along_axis(lambda pix: convert_color(pix, colors), 2, img)
-    img = PIL.Image.fromarray(img).convert('RGBA')
+    transparent_color = np.array([253, 253, 253, 0], dtype=np.uint8)
+    img = np.apply_along_axis(lambda pix: convert_color(pix, colors, transparent_color), 2, img)
+    img = PIL.Image.fromarray(img)
 
     for attempts in range(5):
         try:
@@ -1041,6 +1040,7 @@ def shablon_crop():
             set_config_value("Y", y)
             set_config_value("FILE", fil)
             set_config_value("CROPPED", True)
+            del img
             return
         except:
             time.sleep(1)
@@ -1060,11 +1060,11 @@ def job_hour():
         y = int(get_config_value("Y"))
         file = get_config_value("FILE")
         canvas_char = get_config_value("CANVAS")
-        img = np.array(get_pil(file), dtype=np.uint8)
+        img = np.array(get_pil(file).convert('RGB'), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url, canvas_char)
-        colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
+        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
         new_colors = [new_color(color) for color in colors]
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
@@ -1074,13 +1074,14 @@ def job_hour():
         diff = result["diff"]
         change = result["change"]
         perc = (total_size - diff) / total_size
-        img = PIL.Image.fromarray(img).convert('RGBA')
+        img = PIL.Image.fromarray(img)
         bot.send_message(ME, 'abba2')
         fil = None
         for attempts in range(5):
             try:
                 m = bot.send_document(SERVICE_CHATID, send_pil(img))
                 fil = m.document.file_id
+                del img
                 break
             except:
                 time.sleep(1)
