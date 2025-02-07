@@ -782,6 +782,7 @@ def handle_text(message, txt):
         for attempts in range(5):
             try:
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
+                del img
                 return
             except:
                 time.sleep(1)
