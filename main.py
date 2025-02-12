@@ -871,7 +871,7 @@ def points_from_text(text):
         urlparsed = parse_pixel_url(url)
         if urlparsed is not None:
             points.append(urlparsed)
-    return text
+    return points
 
 
 @app.route('/shablon_info')
