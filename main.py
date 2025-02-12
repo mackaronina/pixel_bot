@@ -706,30 +706,6 @@ def void_off(message):
     bot.reply_to(message, "Ти більше не пінгуєшся під час зниженого кд")
 
 
-@bot.message_handler(commands=["pin_on"])
-def pin_on(message):
-    if not check_access(message):
-        return
-    pin = eval(get_config_value("PIN"))
-    if pin:
-        bot.reply_to(message, "Бот і так робить закріп, сосі")
-        return
-    set_config_value("PIN", True)
-    bot.reply_to(message, "Бот тепер закріплює повідомлення про войд")
-
-
-@bot.message_handler(commands=["pin_off"])
-def pin_off(message):
-    if not check_access(message):
-        return
-    pin = eval(get_config_value("PIN"))
-    if not pin:
-        bot.reply_to(message, "Бот і так не робить закріпу, сосі")
-        return
-    set_config_value("PIN", False)
-    bot.reply_to(message, "Бот більше не закріплює повідомлення про войд")
-
-
 @bot.message_handler(commands=["shablon"])
 def msg_shablon_info(message):
     url = get_config_value("URL")
@@ -762,19 +738,21 @@ def msg_text(message):
 
 def handle_text(message, txt):
     low = txt.lower()
+    search_res = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
     if re.search(r'\bсбу\b', low):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
-    elif re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low) and message.photo is None:
+    elif search_res is not None and message.photo is None:
         if is_running:
             return
-        parselink = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)[0].split('/')
-        site = parselink[0]
-        parselink = parselink[1].replace('#', '').split(',')
-        x = int(parselink[1]) - 200
-        y = int(parselink[2]) - 150
-        canvas_char = parselink[0]
+        parselink = parse_pixel_url(search_res[0])
+        if parselink is None:
+            return
+        site = parselink['site']
+        x = parselink['x'] - 200
+        y = parselink['y'] - 150
+        canvas_char = parselink['canvas']
         canvas, _ = fetch_me(site, canvas_char)
         colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
         img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
@@ -866,17 +844,50 @@ def urls_to_html(text):
     return text
 
 
+def parse_pixel_url(url):
+    try:
+        urlparsed = urlparse(url, allow_fragments=True)
+        if len(urlparsed.netloc) != 0:
+            site = urlparsed.netloc
+        else:
+            site = urlparsed.path.replace('/', '')
+        if '.fun' in site and len(urlparsed.fragment) != 0:
+            canvas = urlparsed.fragment.split(',')[0]
+            x = int(urlparsed.fragment.split(',')[1])
+            y = int(urlparsed.fragment.split(',')[2])
+            return {'x': x, 'y': y, 'site': site, 'canvas': canvas}
+        else:
+            return None
+    except:
+        return None
+
+
+def points_from_text(text):
+    points = []
+    regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
+    urls = [x[0] for x in re.findall(regex, text.lower())]
+    for url in urls:
+        urlparsed = parse_pixel_url(url)
+        if urlparsed is not None:
+            points.append(urlparsed)
+    return text
+
+
 @app.route('/shablon_info')
 def get_shablon_info():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
+    pic_hash = get_config_value("FILE")
+    points = []
     text = ''
-    msg = bot.get_chat(DB_CHATS[1]).pinned_message
+    msg = bot.get_chat(MAIN_CHATID).pinned_message
     if msg is not None and msg.text is not None:
         text = urls_to_html(msg.html_text)
+        points = points_from_text(msg.html_text)
     elif msg is not None and msg.caption is not None:
         text = urls_to_html(msg.html_caption)
-    return jsonify({"x": x, "y": y, "text": text})
+        points = points_from_text(msg.html_caption)
+    return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
 
 
 def updater(scheduler):
