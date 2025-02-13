@@ -535,6 +535,25 @@ def msg_top(message):
     bot.reply_to(message, text)
 
 
+def calc_medals(medal_list):
+    res = {}
+    data = get_medal_users()
+    count_users = len([user for user in data if len(user['medal_list']) > 0])
+    all_medals = []
+    for user in data:
+        all_medals += [m.lower() for m in user['medal_list']]
+    for medal in medal_list:
+        koef = all_medals.count(medal.lower()) / count_users
+        if koef <= 0.1:
+            icon = '🥇'
+        elif koef <= 0.4:
+            icon = '🥈'
+        else:
+            icon = '🥉'
+        res[medal] = icon
+    return res
+
+
 @bot.message_handler(commands=["medal_info"])
 def msg_medal(message):
     if message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
@@ -549,8 +568,8 @@ def msg_medal(message):
             text = "У цього лоха нема медалей"
     else:
         text = f"<b>Всього медалей у {user['name']}:  {len(user['medal_list'])} 🎖</b>\n\n"
-        for medal in user['medal_list']:
-            text += f'🥇  {medal}\n'
+        for medal, icon in calc_medals(user['medal_list']).items():
+            text += f'{icon}  {medal}\n'
     bot.reply_to(message, text)
 
 
@@ -863,11 +882,15 @@ def parse_pixel_url(url):
         return None
 
 
+def remove_duplicates(lst):
+    return list(dict.fromkeys(lst))
+
+
 def points_from_text(text):
     points = []
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
     urls = [x[0] for x in re.findall(regex, text.lower())]
-    for url in urls:
+    for url in remove_duplicates(urls):
         urlparsed = parse_pixel_url(url)
         if urlparsed is not None:
             points.append(urlparsed)
