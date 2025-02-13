@@ -546,7 +546,7 @@ def calc_medals(medal_list):
         koef = all_medals.count(medal.lower()) / count_users
         if koef <= 0.1:
             icon = '🥇'
-        elif koef <= 0.4:
+        elif koef <= 0.3:
             icon = '🥈'
         else:
             icon = '🥉'
