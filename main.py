@@ -521,7 +521,7 @@ def generate_coords_text_telegraph(sort_by):
     return text
 
 
-@bot.message_handler(commands=["medal_top"])
+@bot.message_handler(commands=["mtop", "medal_top"])
 def msg_top(message):
     data = get_medal_users()
     text = 'Ці живчики мають найбільше медалей:\n\n'
@@ -538,15 +538,15 @@ def msg_top(message):
 def calc_medals(medal_list):
     res = {}
     data = get_medal_users()
-    count_users = len([user for user in data if len(user['medal_list']) > 0])
+    # count_users = len([user for user in data if len(user['medal_list']) > 0])
     all_medals = []
     for user in data:
         all_medals += [m.lower() for m in user['medal_list']]
     for medal in medal_list:
-        koef = all_medals.count(medal.lower()) / count_users
-        if koef <= 0.05:
+        koef = all_medals.count(medal.lower())
+        if koef <= 2:
             icon = '🥇'
-        elif koef <= 0.3:
+        elif koef <= 7:
             icon = '🥈'
         else:
             icon = '🥉'
@@ -554,7 +554,7 @@ def calc_medals(medal_list):
     return res
 
 
-@bot.message_handler(commands=["medal_info"])
+@bot.message_handler(commands=["minfo", "medal_info"])
 def msg_medal(message):
     if message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
         user_id = message.from_user.id
@@ -573,14 +573,14 @@ def msg_medal(message):
     bot.reply_to(message, text)
 
 
-@bot.message_handler(commands=["medal_plus"])
+@bot.message_handler(commands=["mplus", "medal_plus"])
 def msg_medal_plus(message):
     if not check_access(message):
         return
     medal_name = extract_text(message.text)
     if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
         bot.reply_to(message,
-                     "Формат команди: /medal_plus [назва медалі]\nЦією командою можна видати медаль відповіддю на повідомлення людини, яка цю медаль отримає\nПриклади:\n/medal_plus ІДІ НАХУЙ")
+                     "Формат команди: /mplus [назва медалі]\nЦією командою можна видати медаль відповіддю на повідомлення людини, яка цю медаль отримає\nПриклади:\n/mplus За взяття хуя за щоку")
         return
     user_id = message.reply_to_message.from_user.id
     user = get_medal_user(user_id)
@@ -595,14 +595,14 @@ def msg_medal_plus(message):
     bot.reply_to(message, "Медаль видано")
 
 
-@bot.message_handler(commands=["medal_minus"])
+@bot.message_handler(commands=["mminus", "medal_minus"])
 def msg_medal_minus(message):
     if not check_access(message):
         return
     medal_name = extract_text(message.text)
     if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
         bot.reply_to(message,
-                     "Формат команди: /medal_minus [назва медалі]\nЦією командою можна забрати медаль відповіддю на повідомлення людини, у якої ця медаль є\nПриклади:\n/medal_minus ІДІ НАХУЙ")
+                     "Формат команди: /mminus [назва медалі]\nЦією командою можна забрати медаль відповіддю на повідомлення людини, у якої ця медаль є\nПриклади:\n/mminus За взяття хуя за щоку")
         return
     user_id = message.reply_to_message.from_user.id
     user = get_medal_user(user_id)
@@ -755,6 +755,16 @@ def msg_text(message):
         handle_text(message, message.caption)
 
 
+def get_area_image(center_x, center_y, site, canvas_char):
+    x = center_x - 200
+    y = center_y - 150
+    canvas, _ = fetch_me(site, canvas_char)
+    colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+    img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
+    img = PIL.Image.fromarray(img)
+    return img
+
+
 def handle_text(message, txt):
     low = txt.lower()
     search_res = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
@@ -768,18 +778,10 @@ def handle_text(message, txt):
         parselink = parse_pixel_url(search_res[0])
         if parselink is None:
             return
-        site = parselink['site']
-        x = parselink['x'] - 200
-        y = parselink['y'] - 150
-        canvas_char = parselink['canvas']
-        canvas, _ = fetch_me(site, canvas_char)
-        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
-        img = PIL.Image.fromarray(img)
+        img = get_area_image(parselink['x'], parselink['y'], parselink['site'], parselink['canvas'])
         for attempts in range(5):
             try:
                 bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
-                del img
                 return
             except:
                 time.sleep(1)
@@ -980,6 +982,87 @@ def get_hot_point():
     return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_change, max_diff, max_combo), reverse=True)[0]
 
 
+def intersection_rectangles(x1, y1, x2, y2, x3, y3, x4, y4):
+    x5 = max(x1, x3)
+    y5 = max(y1, y3)
+    x6 = min(x2, x4)
+    y6 = min(y2, y4)
+    if x5 > x6 or y5 > y6:
+        return False
+    return True
+
+
+def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w, h):
+    if is_running or not cropped:
+        return
+    if "rolled back" in msg_txt or "loaded image" in msg_txt:
+        result = re.findall(r'\+\*[1234567890-]*\*\+', msg_txt)
+        x1 = int(result[0].replace('+', '').replace('*', ''))
+        y1 = int(result[1].replace('+', '').replace('*', ''))
+        x2 = int(result[2].replace('+', '').replace('*', ''))
+        y2 = int(result[3].replace('+', '').replace('*', ''))
+    elif "Canvas Cleaner" in msg_txt:
+        result = re.findall(r',[1234567890-]*', msg_txt)
+        x1 = int(result[0].replace(',', ''))
+        y1 = int(result[1].replace(',', ''))
+        x2 = int(result[2].replace(',', ''))
+        y2 = int(result[3].replace(',', ''))
+    else:
+        return
+    if not intersection_rectangles(x1, y1, x2, y2, shablon_x, shablon_y, shablon_x + w, shablon_y + h):
+        return
+    rollback_x = int((x1 + x2) / 2)
+    rollback_y = int((y1 + y2) / 2)
+    text = f'<b>Помічений ролбек</b>\n{link(canvas_char, site, rollback_x, rollback_y, 10)}'
+    img = get_area_image(rollback_x, rollback_y, site, canvas_char)
+    for attempts in range(5):
+        try:
+            bot.send_photo(MAIN_CHATID, send_pil(img), caption=text)
+            return
+        except:
+            time.sleep(1)
+
+
+def check_void(msg_txt, canvas, url, ping_users):
+    if "successfully defeated" not in msg_txt:
+        return
+    while is_running:
+        time.sleep(1)
+    text = f"<b>Почалося знижене кд, гойда!</b>"
+    photo = None
+    chunk = get_hot_point()
+    if chunk is not None:
+        text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
+        x = int(chunk['pixel_point'].split('_')[0]) - 200
+        y = int(chunk['pixel_point'].split('_')[1]) - 150
+        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
+        img = PIL.Image.fromarray(img)
+        for attempts in range(5):
+            try:
+                m = bot.send_photo(SERVICE_CHATID, send_pil(img))
+                photo = m.photo[-1].file_id
+                break
+            except:
+                time.sleep(1)
+    text += "\n\nОтримай актуальний шаблон командою /shablon"
+    ping_list = to_matrix(ping_users, 5)
+    for chatid in DB_CHATS:
+        try:
+            if photo is None:
+                m = bot.send_message(chatid, text)
+            else:
+                m = bot.send_photo(chatid, photo, caption=text)
+            for ping_five in ping_list:
+                txt = ''
+                for user in ping_five:
+                    txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+                bot.reply_to(m, txt)
+                time.sleep(0.5)
+        except:
+            pass
+
+
 def job_minute():
     try:
         while len(processed_messages) > 100:
@@ -987,6 +1070,11 @@ def job_minute():
         url = get_config_value("URL")
         ping_users = json.loads(get_config_value("PING_USERS"))
         canvas_char = get_config_value("CANVAS")
+        cropped = eval(get_config_value("CROPPED"))
+        shablon_x = int(get_config_value("X"))
+        shablon_y = int(get_config_value("Y"))
+        w = int(get_config_value("WIDTH"))
+        h = int(get_config_value("HEIGHT"))
         canvas, channel_id = fetch_me(url, canvas_char)
         history = fetch_channel(url, channel_id)
         for msg in history:
@@ -1000,43 +1088,10 @@ def job_minute():
                 msg_txt = msg[1].lower()
             if msg_time in processed_messages or time.time() - msg_time > 180:
                 continue
-            if msg_sender == "event" and "successfully defeated" in msg_txt:
-                while is_running:
-                    time.sleep(1)
-                text = f"<b>Почалося знижене кд, гойда!</b>"
-                photo = None
-                chunk = get_hot_point()
-                if chunk is not None:
-                    text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
-                    x = int(chunk['pixel_point'].split('_')[0]) - 200
-                    y = int(chunk['pixel_point'].split('_')[1]) - 150
-                    colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-                    img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
-                    img = PIL.Image.fromarray(img)
-                    for attempts in range(5):
-                        try:
-                            m = bot.send_photo(SERVICE_CHATID, send_pil(img))
-                            photo = m.photo[-1].file_id
-                            break
-                        except:
-                            time.sleep(1)
-                text += "\n\nОтримай актуальний шаблон командою /shablon"
-                ping_list = to_matrix(ping_users, 5)
-                for chatid in DB_CHATS:
-                    try:
-                        if photo is None:
-                            m = bot.send_message(chatid, text)
-                        else:
-                            m = bot.send_photo(chatid, photo, caption=text)
-                        for ping_five in ping_list:
-                            txt = ''
-                            for user in ping_five:
-                                txt += f'<a href="tg://user?id={user}">ㅤ</a>'
-                            bot.reply_to(m, txt)
-                            time.sleep(0.5)
-                    except:
-                        pass
-
+            if msg_sender == "event":
+                check_void(msg_txt, canvas, url, ping_users)
+            elif msg_sender == "info":
+                check_rollback(msg_txt, url, cropped, canvas_char, shablon_x, shablon_y, w, h)
             processed_messages.append(msg_time)
     except:
         sio = StringIO(traceback.format_exc())
@@ -1065,17 +1120,20 @@ def shablon_crop():
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     transparent_color = np.array([253, 253, 253, 0], dtype=np.uint8)
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors, transparent_color), 2, img)
-    img = PIL.Image.fromarray(img)
+    pil_img = PIL.Image.fromarray(img)
+    del img
+    width, height = pil_img.size
 
     for attempts in range(5):
         try:
-            m = bot.send_document(SERVICE_CHATID, send_pil(img))
+            m = bot.send_document(SERVICE_CHATID, send_pil(pil_img))
             fil = m.document.file_id
             set_config_value("X", x)
             set_config_value("Y", y)
             set_config_value("FILE", fil)
             set_config_value("CROPPED", True)
-            del img
+            set_config_value("WIDTH", width)
+            set_config_value("HEIGHT", height)
             return
         except:
             time.sleep(1)
@@ -1109,14 +1167,14 @@ def job_hour():
         diff = result["diff"]
         change = result["change"]
         perc = (total_size - diff) / total_size
-        img = PIL.Image.fromarray(img)
+        pil_img = PIL.Image.fromarray(img)
+        del img
         bot.send_message(ME, 'abba2')
         fil = None
         for attempts in range(5):
             try:
-                m = bot.send_document(SERVICE_CHATID, send_pil(img))
+                m = bot.send_document(SERVICE_CHATID, send_pil(pil_img))
                 fil = m.document.file_id
-                del img
                 break
             except:
                 time.sleep(1)
