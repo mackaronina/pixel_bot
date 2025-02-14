@@ -284,6 +284,10 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 })
                 return
         except:
+            sio = StringIO(traceback.format_exc())
+            sio.name = 'log.txt'
+            sio.seek(0)
+            bot.send_document(ME, sio)
             await asyncio.sleep(1)
     result["error"] = True
 
