@@ -44,7 +44,8 @@ class ExHandler(telebot.ExceptionHandler):
         return True
 
 
-bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=10, parse_mode='HTML', exception_handler=ExHandler())
+bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=10, parse_mode='HTML', disable_web_page_preview=True,
+                      exception_handler=ExHandler())
 apihelper.RETRY_ON_ERROR = True
 app = Flask(__name__)
 CORS(app)
@@ -245,8 +246,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             chunk_pixel_link = None
             chunk_pixel_point = None
             if len(data) != 65536:
+                bot.send_message(ME, str(len(data)))
                 data = [0 for i in range(65536)]
-                bot.send_message(ME, len(data))
             for i, b in enumerate(data):
                 tx = off_x + i % 256
                 ty = off_y + i // 256
@@ -639,7 +640,7 @@ def msg_site(message):
     try:
         fetch_me(args[0])
     except:
-        bot.reply_to(message, "Не вдалось зв'єднатись, сосі")
+        bot.reply_to(message, "Не вдалось за'єднатись, сосі")
         return
     set_config_value("URL", args[0])
     set_config_value("CROPPED", False)
