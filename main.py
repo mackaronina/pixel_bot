@@ -237,6 +237,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 rsp = await fetch_via_proxy(url)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
+            if rsp.status_code != 200:
+                raise Exception("No data")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -245,9 +247,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             chunk_size = 0
             chunk_pixel_link = None
             chunk_pixel_point = None
-            if len(data) != 65536:
-                bot.send_message(ME, str(len(data)))
-                data = [0 for i in range(65536)]
+            while len(data) < 65536:
+                data.append(0)
             for i, b in enumerate(data):
                 tx = off_x + i % 256
                 ty = off_y + i // 256
@@ -348,29 +349,23 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                 rsp = await fetch_via_proxy(url)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
+            if rsp.status_code != 200:
+                raise Exception("No data")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
-            if len(data) != 65536:
-                for i in range(256 * 256):
-                    tx = off_x + i % 256
-                    ty = off_y + i // 256
-                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                        continue
-                    x = ty - start_y
-                    y = tx - start_x
-                    img[x, y] = colors[0]
-            else:
-                for i, b in enumerate(data):
-                    tx = off_x + i % 256
-                    ty = off_y + i // 256
-                    bcl = b & 0x7F
-                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                        continue
-                    x = ty - start_y
-                    y = tx - start_x
-                    img[x, y] = colors[bcl]
+            while len(data) < 65536:
+                data.append(0)
+            for i, b in enumerate(data):
+                tx = off_x + i % 256
+                ty = off_y + i // 256
+                bcl = b & 0x7F
+                if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                    continue
+                x = ty - start_y
+                y = tx - start_x
+                img[x, y] = colors[bcl]
             return
         except Exception as e:
             bot.send_message(ME, str(e))
@@ -773,8 +768,6 @@ def handle_text(message, txt):
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
     elif search_res is not None and message.photo is None:
-        if is_running:
-            return
         parselink = parse_pixel_url(search_res[0])
         if parselink is None:
             return
@@ -967,7 +960,7 @@ def calc_score(chunk, max_change, max_diff, max_combo):
 def get_hot_point():
     if len(chunks_info) == 0:
         return None
-    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0]
+    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0 and chunk["change"] > 0]
     if len(chunks_copy) == 0:
         return None
     for chunk in chunks_copy:
@@ -975,7 +968,7 @@ def get_hot_point():
         if chunk["key"] in top_three.keys():
             chunk["combo"] = top_three[chunk["key"]] - 1
 
-    max_change = max([chunk["change"] for chunk in chunks_copy if chunk["change"] >= 0])
+    max_change = max([chunk["change"] for chunk in chunks_copy])
     max_diff = max([chunk["diff"] for chunk in chunks_copy])
     max_combo = max([chunk["combo"] for chunk in chunks_copy])
 
@@ -993,7 +986,7 @@ def intersection_rectangles(x1, y1, x2, y2, x3, y3, x4, y4):
 
 
 def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w, h):
-    if is_running or not cropped:
+    if not cropped:
         return
     if "rolled back" in msg_txt or "loaded image" in msg_txt:
         result = re.findall(r'\+\*[1234567890-]*\*\+', msg_txt)
@@ -1026,8 +1019,6 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
 def check_void(msg_txt, canvas, url, ping_users):
     if "successfully defeated" not in msg_txt:
         return
-    while is_running:
-        time.sleep(1)
     text = f"<b>Почалося знижене кд, гойда!</b>"
     photo = None
     chunk = get_hot_point()
