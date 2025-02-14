@@ -244,20 +244,19 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             chunk_size = 0
             chunk_pixel_link = None
             chunk_pixel_point = None
-
+            if len(data) != 65536:
+                data = [0 for i in range(65536)]
+                bot.send_message(ME, len(data))
             for i, b in enumerate(data):
                 tx = off_x + i % 256
                 ty = off_y + i // 256
-                if len(data) != 65536:
-                    bcl = 0
-                else:
-                    bcl = b & 0x7F
+                bcl = b & 0x7F
                 if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
                     continue
                 x = ty - start_y
                 y = tx - start_x
                 color = img[x, y]
-                if color[0] == 253:
+                if color[0] == 1:
                     continue
                 map_color = colors[bcl]
                 if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
@@ -1118,7 +1117,7 @@ def shablon_crop():
     img = np.array(img, dtype=np.uint8)
     canvas, _ = fetch_me(url, canvas_char)
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
-    transparent_color = np.array([253, 253, 253, 0], dtype=np.uint8)
+    transparent_color = np.array([1, 1, 1, 0], dtype=np.uint8)
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors, transparent_color), 2, img)
     pil_img = PIL.Image.fromarray(img)
     del img
