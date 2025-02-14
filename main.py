@@ -241,7 +241,15 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
             if len(data) != 65536:
-                raise Exception("No data")
+                bot.send_message(ME, str(len(data)))
+                for i in range(256 * 256):
+                    tx = off_x + i % 256
+                    ty = off_y + i // 256
+                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                        continue
+                    x = ty - start_y
+                    y = tx - start_x
+                    img[x, y] = colors[0]
             else:
                 chunk_diff = 0
                 chunk_size = 0
@@ -284,10 +292,6 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 })
                 return
         except:
-            sio = StringIO(traceback.format_exc())
-            sio.name = 'log.txt'
-            sio.seek(0)
-            bot.send_document(ME, sio)
             await asyncio.sleep(1)
     result["error"] = True
 
