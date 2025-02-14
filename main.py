@@ -240,57 +240,49 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
-            if len(data) != 65536:
-                bot.send_message(ME, str(len(data)))
-                for i in range(256 * 256):
-                    tx = off_x + i % 256
-                    ty = off_y + i // 256
-                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                        continue
-                    x = ty - start_y
-                    y = tx - start_x
-                    img[x, y] = colors[0]
-            else:
-                chunk_diff = 0
-                chunk_size = 0
-                chunk_pixel_link = None
-                chunk_pixel_point = None
+            chunk_diff = 0
+            chunk_size = 0
+            chunk_pixel_link = None
+            chunk_pixel_point = None
 
-                for i, b in enumerate(data):
-                    tx = off_x + i % 256
-                    ty = off_y + i // 256
+            for i, b in enumerate(data):
+                tx = off_x + i % 256
+                ty = off_y + i // 256
+                if len(data) != 65536:
+                    bcl = 0
+                else:
                     bcl = b & 0x7F
-                    if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
-                        continue
-                    x = ty - start_y
-                    y = tx - start_x
-                    color = img[x, y]
-                    if color[0] == 253:
-                        continue
-                    map_color = colors[bcl]
-                    if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
-                        if chunk_diff == 0:
-                            chunk_pixel_link = link(canvas_char, base_url, tx, ty, 25)
-                            chunk_pixel_point = f"{tx}_{ty}"
-                        chunk_diff += 1
-                        img[x, y] = map_color
-                    else:
-                        img[x, y] = new_colors[bcl]
-                    chunk_size += 1
+                if not (start_x <= tx < (start_x + width)) or not (start_y <= ty < (start_y + height)):
+                    continue
+                x = ty - start_y
+                y = tx - start_x
+                color = img[x, y]
+                if color[0] == 253:
+                    continue
+                map_color = colors[bcl]
+                if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
+                    if chunk_diff == 0:
+                        chunk_pixel_link = link(canvas_char, base_url, tx, ty, 25)
+                        chunk_pixel_point = f"{tx}_{ty}"
+                    chunk_diff += 1
+                    img[x, y] = map_color
+                else:
+                    img[x, y] = new_colors[bcl]
+                chunk_size += 1
 
-                if chunk_diff > 10000:
-                    chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
-                    chunk_pixel_point = f"{off_x + 128}_{off_y + 128}"
-                result["diff"] += chunk_diff
-                result["total_size"] += chunk_size
-                chunks_info.append({
-                    "key": f"{off_x}_{off_y}",
-                    "diff": chunk_diff,
-                    "pixel_link": chunk_pixel_link,
-                    "pixel_point": chunk_pixel_point,
-                    "change": 0
-                })
-                return
+            if chunk_diff > 10000:
+                chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
+                chunk_pixel_point = f"{off_x + 128}_{off_y + 128}"
+            result["diff"] += chunk_diff
+            result["total_size"] += chunk_size
+            chunks_info.append({
+                "key": f"{off_x}_{off_y}",
+                "diff": chunk_diff,
+                "pixel_link": chunk_pixel_link,
+                "pixel_point": chunk_pixel_point,
+                "change": 0
+            })
+            return
         except:
             await asyncio.sleep(1)
     result["error"] = True
