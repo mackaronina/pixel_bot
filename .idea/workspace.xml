@@ -357,15 +357,8 @@
       <workItem from="1739712301603" duration="517000" />
       <workItem from="1739714879058" duration="208000" />
       <workItem from="1739725241109" duration="402000" />
-      <workItem from="1739730978798" duration="60000" />
-    </task>
-    <task id="LOCAL-00011" summary="Some commit">
-      <option name="closed" value="true" />
-      <created>1734886381872</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1734886381872</updated>
+      <workItem from="1739730978798" duration="178000" />
+      <workItem from="1739735485285" duration="248000" />
     </task>
     <task id="LOCAL-00012" summary="Some commit">
       <option name="closed" value="true" />
@@ -751,7 +744,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739725319241</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="Some commit">
+      <option name="closed" value="true" />
+      <created>1739731055445</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1739731055445</updated>
+    </task>
+    <option name="localTasksCounter" value="61" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -771,17 +772,6 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Some commit" />
     <option name="LAST_COMMIT_MESSAGE" value="Some commit" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/main.py</url>
-          <line>61</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ukrbot$main.coverage" NAME="main Coverage Results" MODIFIED="1732385604391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
