@@ -849,7 +849,14 @@ def get_shablon_pictrue():
     return send_file(bio, mimetype='image/png', as_attachment=True, download_name=bio.name)
 
 
-def urls_to_html(text):
+def pin_to_html():
+    msg = bot.get_chat(MAIN_CHATID).pinned_message
+    if msg is not None and msg.text is not None:
+        text = msg.html_text
+    elif msg is not None and msg.caption is not None:
+        text = msg.html_caption
+    else:
+        return ''
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
     urls = [x[0] for x in re.findall(regex, text)]
     for url in urls:
@@ -881,7 +888,14 @@ def remove_duplicates(lst):
     return list(dict.fromkeys(lst))
 
 
-def points_from_text(text):
+def points_from_pin():
+    msg = bot.get_chat(MAIN_CHATID).pinned_message
+    if msg is not None and msg.text is not None:
+        text = msg.html_text
+    elif msg is not None and msg.caption is not None:
+        text = msg.html_caption
+    else:
+        return []
     points = []
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
     urls = [x[0] for x in re.findall(regex, text.lower())]
@@ -897,15 +911,8 @@ def get_shablon_info():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     pic_hash = get_config_value("FILE")
-    points = []
-    text = ''
-    msg = bot.get_chat(MAIN_CHATID).pinned_message
-    if msg is not None and msg.text is not None:
-        text = urls_to_html(msg.html_text)
-        points = points_from_text(msg.html_text)
-    elif msg is not None and msg.caption is not None:
-        text = urls_to_html(msg.html_caption)
-        points = points_from_text(msg.html_caption)
+    points = points_from_pin()
+    text = pin_to_html()
     return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
 
 
@@ -1014,44 +1021,43 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
             return
         except:
             time.sleep(1)
+    raise Exception("Failed to check rollback")
 
 
-def check_void(msg_txt, canvas, url, ping_users):
+def check_void(msg_txt, canvas_char, url, ping_users):
     if "successfully defeated" not in msg_txt:
         return
     text = f"<b>Почалося знижене кд, гойда!</b>"
-    photo = None
+    img = None
+    points = points_from_pin()
     chunk = get_hot_point()
-    if chunk is not None:
+    if len(points) > 0:
+        point = points[0]
+        text += f"\n\nТикаємо по закріпу: {link(point['canvas'], point['site'], point['x'], point['y'], 10)}"
+        img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
+    elif chunk is not None:
         text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
-        x = int(chunk['pixel_point'].split('_')[0]) - 200
-        y = int(chunk['pixel_point'].split('_')[1]) - 150
-        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, url))
-        img = PIL.Image.fromarray(img)
-        for attempts in range(5):
-            try:
-                m = bot.send_photo(SERVICE_CHATID, send_pil(img))
-                photo = m.photo[-1].file_id
-                break
-            except:
-                time.sleep(1)
+        img = get_area_image(int(chunk['pixel_point'].split('_')[0]),
+                             int(chunk['pixel_point'].split('_')[1]),
+                             url, canvas_char)
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
-    for chatid in DB_CHATS:
+    for attempts in range(5):
         try:
-            if photo is None:
-                m = bot.send_message(chatid, text)
+            if img is not None:
+                m = bot.send_photo(MAIN_CHATID, send_pil(img), caption=text)
             else:
-                m = bot.send_photo(chatid, photo, caption=text)
+                m = bot.send_message(MAIN_CHATID, text)
             for ping_five in ping_list:
                 txt = ''
                 for user in ping_five:
                     txt += f'<a href="tg://user?id={user}">ㅤ</a>'
                 bot.reply_to(m, txt)
                 time.sleep(0.5)
+            return
         except:
-            pass
+            time.sleep(1)
+    raise Exception("Failed to check void")
 
 
 def job_minute():
@@ -1077,10 +1083,10 @@ def job_minute():
                 msg_time = msg[4]
                 msg_sender = msg[0]
                 msg_txt = msg[1].lower()
-            if msg_time in processed_messages or time.time() - msg_time > 180:
+            if msg_time in processed_messages or time.time() - msg_time > 120:
                 continue
             if msg_sender == "event":
-                check_void(msg_txt, canvas, url, ping_users)
+                check_void(msg_txt, canvas_char, url, ping_users)
             elif msg_sender == "info":
                 check_rollback(msg_txt, url, cropped, canvas_char, shablon_x, shablon_y, w, h)
             processed_messages.append(msg_time)
@@ -1137,6 +1143,7 @@ def job_hour():
         if is_running:
             return
         is_running = True
+        set_config_value("MAP_RUNNING", True)
         telegraph_url = None
         shablon_crop()
         url = get_config_value("URL")
@@ -1208,6 +1215,7 @@ def job_hour():
         bot.send_message(ME, str(e))
     finally:
         is_running = False
+        set_config_value("MAP_RUNNING", False)
 
 
 if __name__ == '__main__':
@@ -1221,4 +1229,7 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
+    map_running = eval(get_config_value("MAP_RUNNING"))
+    if map_running:
+        Thread(target=job_hour).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
