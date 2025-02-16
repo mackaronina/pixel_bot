@@ -1220,21 +1220,16 @@ def job_hour():
         set_config_value("MAP_RUNNING", False)
 
 
-def restart_map():
-    time.sleep(60)
-    job_hour()
-
-
-def check_restart_map():
+def check_restart_map(map_job):
     map_running = eval(get_config_value("MAP_RUNNING"))
     if map_running:
-        Thread(target=restart_map).start()
+        map_job.run()
 
 
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
     scheduler1 = schedule.Scheduler()
-    scheduler1.every(60).minutes.do(job_hour)
+    map_job = scheduler1.every(60).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
     scheduler2.every().day.at("23:00").do(job_day)
     scheduler3 = schedule.Scheduler()
@@ -1242,5 +1237,5 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
-    check_restart_map()
+    check_restart_map(map_job)
     app.run(host='0.0.0.0', port=80, threaded=True)
