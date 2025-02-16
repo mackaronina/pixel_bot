@@ -751,6 +751,8 @@ def msg_text(message):
 
 
 def get_area_image(center_x, center_y, site, canvas_char):
+    if is_running:
+        raise Exception('Map is running')
     x = center_x - 200
     y = center_y - 150
     canvas, _ = fetch_me(site, canvas_char)
