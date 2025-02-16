@@ -401,6 +401,8 @@ def to_fixed(f: float, n=0):
 
 
 def check_access(message):
+    if message.chat.id == ME:
+        return True
     status = bot.get_chat_member(message.chat.id, message.from_user.id).status
     if message.chat.id not in DB_CHATS or (
             status != 'administrator' and status != 'creator' and message.from_user.id != ME and message.from_user.id != ANONIM):

@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="08010453-49d9-4ae7-90f5-93a1ac82813a" name="Changes" comment="Some commit">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -352,15 +353,8 @@
       <workItem from="1739700420282" duration="311000" />
       <workItem from="1739700959408" duration="62000" />
       <workItem from="1739701570192" duration="2638000" />
-      <workItem from="1739708898966" duration="1443000" />
-    </task>
-    <task id="LOCAL-00007" summary="Some commit">
-      <option name="closed" value="true" />
-      <created>1734248957546</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1734248957546</updated>
+      <workItem from="1739708898966" duration="1457000" />
+      <workItem from="1739712301603" duration="501000" />
     </task>
     <task id="LOCAL-00008" summary="Some commit">
       <option name="closed" value="true" />
@@ -746,7 +740,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739711329100</updated>
     </task>
-    <option name="localTasksCounter" value="56" />
+    <task id="LOCAL-00056" summary="Some commit">
+      <option name="closed" value="true" />
+      <created>1739711350003</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1739711350003</updated>
+    </task>
+    <option name="localTasksCounter" value="57" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -766,6 +768,17 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Some commit" />
     <option name="LAST_COMMIT_MESSAGE" value="Some commit" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/main.py</url>
+          <line>60</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ukrbot$main.coverage" NAME="main Coverage Results" MODIFIED="1732385604391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
