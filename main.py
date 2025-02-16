@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import html
 import json
 import math
@@ -1062,6 +1063,7 @@ def check_void(msg_txt, canvas_char, url, ping_users):
 
 def job_minute():
     try:
+        gc.collect()
         while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
@@ -1143,7 +1145,6 @@ def job_hour():
         if is_running:
             return
         is_running = True
-        set_config_value("MAP_RUNNING", True)
         telegraph_url = None
         shablon_crop()
         url = get_config_value("URL")
@@ -1215,7 +1216,6 @@ def job_hour():
         bot.send_message(ME, str(e))
     finally:
         is_running = False
-        set_config_value("MAP_RUNNING", False)
 
 
 if __name__ == '__main__':
