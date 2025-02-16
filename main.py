@@ -1218,10 +1218,15 @@ def job_hour():
         set_config_value("MAP_RUNNING", False)
 
 
+def restart_map():
+    time.sleep(60)
+    job_hour()
+
+
 def check_restart_map():
     map_running = eval(get_config_value("MAP_RUNNING"))
     if map_running:
-        Thread(target=job_hour).start()
+        Thread(target=restart_map).start()
 
 
 if __name__ == '__main__':
