@@ -751,8 +751,6 @@ def msg_text(message):
 
 
 def get_area_image(center_x, center_y, site, canvas_char):
-    if is_running:
-        raise Exception('Map is running')
     x = center_x - 200
     y = center_y - 150
     canvas, _ = fetch_me(site, canvas_char)
@@ -1220,11 +1218,6 @@ def job_hour():
         set_config_value("MAP_RUNNING", False)
 
 
-def restart_map():
-    time.sleep(60 * 3)
-    job_hour()
-
-
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
     scheduler1 = schedule.Scheduler()
@@ -1236,7 +1229,4 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler1,)).start()
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
-    map_running = eval(get_config_value("MAP_RUNNING"))
-    if map_running:
-        Thread(target=restart_map).start()
     app.run(host='0.0.0.0', port=80, threaded=True)
