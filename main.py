@@ -1029,11 +1029,11 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
 def check_void(msg_txt, canvas_char, url, ping_users):
     if "successfully defeated" not in msg_txt:
         return
-    text = f"<b>Почалося знижене кд, гойда!</b>"
+    text = f"<b>Почалося знижене кд на {url}, гойда!</b>"
     img = None
     points = points_from_pin()
     chunk = get_hot_point()
-    if len(points) > 0:
+    if len(points) > 0 and points[0]['site'] == url:
         point = points[0]
         text += f"\n\nТапаємо по закріпу: {link(point['canvas'], point['site'], point['x'], point['y'], 10)}"
         img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
