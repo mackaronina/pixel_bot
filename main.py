@@ -249,7 +249,6 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             chunk_pixel_point = None
             while len(data) < 65536:
                 data += bytes((0,))
-            data = np.frombuffer(data, dtype=np.uint8)
             for i, b in enumerate(data):
                 tx = off_x + i % 256
                 ty = off_y + i // 256
@@ -358,7 +357,6 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
             off_y = iy * 256 + offset
             while len(data) < 65536:
                 data += bytes((0,))
-            data = np.frombuffer(data, dtype=np.uint8)
             for i, b in enumerate(data):
                 tx = off_x + i % 256
                 ty = off_y + i // 256
