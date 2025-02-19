@@ -953,23 +953,17 @@ def job_day():
         bot.send_message(ME, str(e))
 
 
-def calc_score(chunk, max_change, max_diff, max_combo):
-    a = 1
-    if max_change > 0 and chunk["change"] > 0:
-        a = round((chunk["change"] / max_change) * 100)
-    b = 1
-    if max_diff > 0 and chunk["diff"] > 0:
-        b = round((chunk["diff"] / max_diff) * 100)
-    c = 1
+def calc_score(chunk, max_combo):
+    k = 1
     if max_combo > 0 and chunk["combo"] > 0:
-        c = round((chunk["combo"] / max_combo) * 100)
-    return a * b * c
+        k = chunk["combo"] / max_combo
+    return (chunk["change"] ** 2 / chunk["diff"]) * k
 
 
 def get_hot_point():
     if len(chunks_info) == 0:
         return None
-    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["diff"] > 0 and chunk["change"] > 0]
+    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 0]
     if len(chunks_copy) == 0:
         return None
     for chunk in chunks_copy:
@@ -977,11 +971,9 @@ def get_hot_point():
         if chunk["key"] in top_three.keys():
             chunk["combo"] = top_three[chunk["key"]] - 1
 
-    max_change = max([chunk["change"] for chunk in chunks_copy])
-    max_diff = max([chunk["diff"] for chunk in chunks_copy])
     max_combo = max([chunk["combo"] for chunk in chunks_copy])
 
-    return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_change, max_diff, max_combo), reverse=True)[0]
+    return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_combo), reverse=True)[0]
 
 
 def intersection_rectangles(x1, y1, x2, y2, x3, y3, x4, y4):
@@ -1183,8 +1175,8 @@ def job_hour():
         if change != 0:
             text += f" <b>({format_change(change)})</b>"
         text2 = None
-        sorted_chunks = sorted(chunks_info, key=lambda chunk: chunk["change"], reverse=True)
-        sorted_chunks = [chunk for chunk in sorted_chunks if chunk["change"] > 0]
+        sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
+        sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"] ** 2 / chunk["diff"], reverse=True)
         new_top_three = {}
         if len(sorted_chunks) > 0:
             text2 = "За цими координатами помічено найбільшу ворожу активність:"
