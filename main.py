@@ -1030,7 +1030,7 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         text += f"\n\nТапаємо по закріпу: {link(point['canvas'], point['site'], point['x'], point['y'], 10)}"
         img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
     elif chunk is not None:
-        text += f"\n\nНайгарячіша точка: {chunk['pixel_link']} ({chunk['diff']} пікселів)"
+        text += f"\n\nНайгарячіша точка: {chunk['pixel_link']}"
         img = get_area_image(int(chunk['pixel_point'].split('_')[0]),
                              int(chunk['pixel_point'].split('_')[1]),
                              url, canvas_char)
