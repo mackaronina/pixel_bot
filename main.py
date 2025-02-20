@@ -26,8 +26,7 @@ from telegraph import Telegraph
 from config import *
 
 is_running = False
-old_chunks_diff = {}
-top_three = {}
+
 chunks_info = []
 blocked_messages = []
 processed_messages = []
@@ -37,6 +36,7 @@ telegraph_url = None
 
 class ExHandler(telebot.ExceptionHandler):
     def handle(self, exc):
+        bot.send_message(ME, str(exc))
         sio = StringIO(traceback.format_exc())
         sio.name = 'log.txt'
         sio.seek(0)
@@ -66,12 +66,25 @@ def get_config_value(key):
         return data[0]
 
 
-def set_config_value(key, value):
+def set_config_value(key, value, clear=True):
     if get_config_value(key) is None:
         cursor.execute(f"INSERT INTO key_value (key, value) VALUES ('{key}', '{value}')")
     else:
         cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
-    old_chunks_diff.clear()
+    if clear and len(chunks_info) > 0:
+        chunks_info.clear()
+        save_chunks_info()
+
+
+def load_chunks_info():
+    global chunks_info
+    info = get_config_value("CHUNKS_INFO")
+    if info is not None:
+        chunks_info = json.loads(info)
+
+
+def save_chunks_info():
+    set_config_value("CHUNKS_INFO", json.dumps(chunks_info, ensure_ascii=False), False)
 
 
 def get_medal_user(user_id):
@@ -180,7 +193,7 @@ def fetch_me(url, canvas_char="d"):
                 data = resp.json()
                 break
             except Exception as e:
-                bot.send_message(ME, str(e))
+                ExHandler().handle(e)
                 time.sleep(1)
         if data is None:
             raise Exception("Failed to fetch canvas")
@@ -226,6 +239,10 @@ def fetch_channel(url, channel_id):
             except:
                 time.sleep(1)
         raise Exception("Chat history failed")
+
+
+def find_chunk_by_key(chunk_key):
+    return next((chunk for chunk in chunks_info if chunk['key'] == chunk_key), None)
 
 
 async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
@@ -274,15 +291,27 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             if chunk_diff > 10000:
                 chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
                 chunk_pixel_point = f"{off_x + 128}_{off_y + 128}"
+
             result["diff"] += chunk_diff
             result["total_size"] += chunk_size
-            chunks_info.append({
-                "key": f"{off_x}_{off_y}",
-                "diff": chunk_diff,
-                "pixel_link": chunk_pixel_link,
-                "pixel_point": chunk_pixel_point,
-                "change": 0
-            })
+
+            chunk_key = f"{off_x}_{off_y}"
+            chunk = find_chunk_by_key(chunk_key)
+            if chunk is None:
+                chunks_info.append({
+                    "key": chunk_key,
+                    "diff": chunk_diff,
+                    "pixel_link": chunk_pixel_link,
+                    "pixel_point": chunk_pixel_point,
+                    "change": 0,
+                    "combo": 0
+                })
+            else:
+                chunk["change"] = chunk_diff - chunk["diff"]
+                result["change"] += chunk["change"]
+                chunk["diff"] = chunk_diff
+                chunk["pixel_link"] = chunk_pixel_link
+                chunk["pixel_point"] = chunk_pixel_point
             return
         except:
             await asyncio.sleep(1)
@@ -290,7 +319,6 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
 
 
 async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char):
-    chunks_info.clear()
     result = {
         "error": False,
         "total_size": 0,
@@ -313,11 +341,6 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
         await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
-    for chunk in chunks_info:
-        if chunk["key"] in old_chunks_diff:
-            chunk["change"] = chunk["diff"] - old_chunks_diff[chunk["key"]]
-            result["change"] += chunk["change"]
-        old_chunks_diff[chunk["key"]] = chunk["diff"]
     return result
 
 
@@ -368,7 +391,7 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                 img[x, y] = colors[bcl]
             return
         except Exception as e:
-            bot.send_message(ME, str(e))
+            ExHandler().handle(e)
             await asyncio.sleep(1)
     raise Exception("Failed to fetch small area")
 
@@ -707,7 +730,7 @@ def void_on(message):
         bot.reply_to(message, "Ти і так пінгуєшся, сосі")
         return
     ping_users.append(message.from_user.id)
-    set_config_value("PING_USERS", json.dumps(ping_users))
+    set_config_value("PING_USERS", json.dumps(ping_users), False)
     bot.reply_to(message, "Ти тепер пінгуєшся під час зниженого кд")
 
 
@@ -718,7 +741,7 @@ def void_off(message):
         bot.reply_to(message, "Ти і так не пінгуєшся, сосі")
         return
     ping_users.remove(message.from_user.id)
-    set_config_value("PING_USERS", json.dumps(ping_users))
+    set_config_value("PING_USERS", json.dumps(ping_users), False)
     bot.reply_to(message, "Ти більше не пінгуєшся під час зниженого кд")
 
 
@@ -774,13 +797,7 @@ def handle_text(message, txt):
         if parselink is None:
             return
         img = get_area_image(parselink['x'], parselink['y'], parselink['site'], parselink['canvas'])
-        for attempts in range(5):
-            try:
-                bot.send_photo(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
-                return
-            except:
-                time.sleep(1)
-        raise Exception("Failed to send photo")
+        send_photo_retry(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
 
 
 @bot.chat_member_handler()
@@ -939,24 +956,20 @@ def job_day():
                         text += f". Перше місце - {country.flag}"
                     else:
                         text += f". Перше місце - <b>{first}</b>"
-                for chatid in DB_CHATS:
-                    try:
-                        bot.send_message(chatid, text)
-                        bot.send_sticker(chatid,
-                                         'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
-                    except:
-                        pass
+                bot.send_message(MAIN_CHATID, text)
+                bot.send_sticker(MAIN_CHATID,
+                                 'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
                 break
             elif i == 0:
                 first = country["cc"]
     except Exception as e:
-        bot.send_message(ME, str(e))
+        ExHandler().handle(e)
 
 
-def calc_score(chunk, max_combo):
+def calc_score(chunk):
     k = 1
-    if max_combo > 0 and chunk["combo"] > 0:
-        k = chunk["combo"] / max_combo
+    if chunk["combo"] > 1:
+        k = chunk["combo"]
     return (chunk["change"] ** 2 / chunk["diff"]) * k
 
 
@@ -966,14 +979,7 @@ def get_hot_point():
     chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 0]
     if len(chunks_copy) == 0:
         return None
-    for chunk in chunks_copy:
-        chunk["combo"] = 0
-        if chunk["key"] in top_three.keys():
-            chunk["combo"] = top_three[chunk["key"]] - 1
-
-    max_combo = max([chunk["combo"] for chunk in chunks_copy])
-
-    return sorted(chunks_copy, key=lambda chunk: calc_score(chunk, max_combo), reverse=True)[0]
+    return sorted(chunks_copy, key=lambda chunk: calc_score(chunk), reverse=True)[0]
 
 
 def intersection_rectangles(x1, y1, x2, y2, x3, y3, x4, y4):
@@ -1009,13 +1015,7 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
     rollback_y = int((y1 + y2) / 2)
     text = f'<b>Помічений ролбек</b>\n{link(canvas_char, site, rollback_x, rollback_y, 10)}'
     img = get_area_image(rollback_x, rollback_y, site, canvas_char)
-    for attempts in range(5):
-        try:
-            bot.send_photo(MAIN_CHATID, send_pil(img), caption=text)
-            return
-        except:
-            time.sleep(1)
-    raise Exception("Failed to check rollback")
+    send_photo_retry(MAIN_CHATID, send_pil(img), caption=text)
 
 
 def check_void(msg_txt, canvas_char, url, ping_users):
@@ -1031,27 +1031,21 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
     elif chunk is not None:
         text += f"\n\nНайгарячіша точка: {chunk['pixel_link']}"
-        img = get_area_image(int(chunk['key'].split('_')[0]) + 128,
-                             int(chunk['key'].split('_')[1]) + 128,
+        img = get_area_image(int(chunk['pixel_point'].split('_')[0]),
+                             int(chunk['pixel_point'].split('_')[1]),
                              url, canvas_char)
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
-    for attempts in range(5):
-        try:
-            if img is not None:
-                m = bot.send_photo(MAIN_CHATID, send_pil(img), caption=text)
-            else:
-                m = bot.send_message(MAIN_CHATID, text)
-            for ping_five in ping_list:
-                txt = ''
-                for user in ping_five:
-                    txt += f'<a href="tg://user?id={user}">ㅤ</a>'
-                bot.reply_to(m, txt)
-                time.sleep(0.5)
-            return
-        except:
-            time.sleep(1)
-    raise Exception("Failed to check void")
+    if img is not None:
+        m = send_photo_retry(MAIN_CHATID, send_pil(img), caption=text)
+    else:
+        m = bot.send_message(MAIN_CHATID, text)
+    for ping_five in ping_list:
+        txt = ''
+        for user in ping_five:
+            txt += f'<a href="tg://user?id={user}">ㅤ</a>'
+        bot.reply_to(m, txt)
+        time.sleep(0.5)
 
 
 def job_minute():
@@ -1084,11 +1078,8 @@ def job_minute():
             elif msg_sender == "info":
                 check_rollback(msg_txt, url, cropped, canvas_char, shablon_x, shablon_y, w, h)
             processed_messages.append(msg_time)
-    except:
-        sio = StringIO(traceback.format_exc())
-        sio.name = 'log.txt'
-        sio.seek(0)
-        bot.send_document(ME, sio)
+    except Exception as e:
+        ExHandler().handle(e)
 
 
 def shablon_crop():
@@ -1114,25 +1105,38 @@ def shablon_crop():
     pil_img = PIL.Image.fromarray(img)
     del img
     width, height = pil_img.size
+    m = send_document_retry(SERVICE_CHATID, send_pil(pil_img))
+    fil = m.document.file_id
+    set_config_value("X", x)
+    set_config_value("Y", y)
+    set_config_value("FILE", fil)
+    set_config_value("CROPPED", True)
+    set_config_value("WIDTH", width)
+    set_config_value("HEIGHT", height)
 
+
+def send_document_retry(chatid, document, caption=None, reply_to_message_id=None):
     for attempts in range(5):
         try:
-            m = bot.send_document(SERVICE_CHATID, send_pil(pil_img))
-            fil = m.document.file_id
-            set_config_value("X", x)
-            set_config_value("Y", y)
-            set_config_value("FILE", fil)
-            set_config_value("CROPPED", True)
-            set_config_value("WIDTH", width)
-            set_config_value("HEIGHT", height)
-            return
+            m = bot.send_document(chatid, document, caption=caption, reply_to_message_id=reply_to_message_id)
+            return m
         except:
             time.sleep(1)
     raise Exception("Failed to send file")
 
 
+def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None):
+    for attempts in range(5):
+        try:
+            m = bot.send_photo(chatid, photo, caption=caption, reply_to_message_id=reply_to_message_id)
+            return m
+        except:
+            time.sleep(1)
+    raise Exception("Failed to send photo")
+
+
 def job_hour():
-    global is_running, updated_at, telegraph_url, top_three
+    global is_running, updated_at, telegraph_url
     try:
         if is_running:
             return
@@ -1161,51 +1165,41 @@ def job_hour():
         pil_img = PIL.Image.fromarray(img)
         del img
         bot.send_message(ME, 'abba2')
-        fil = None
-        for attempts in range(5):
-            try:
-                m = bot.send_document(SERVICE_CHATID, send_pil(pil_img))
-                fil = m.document.file_id
-                break
-            except:
-                time.sleep(1)
-        if fil is None:
-            raise Exception("Failed to send file")
         text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
         if change != 0:
             text += f" <b>({format_change(change)})</b>"
         text2 = None
+
         sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
         sorted_chunks = sorted(sorted_chunks, key=lambda chunk: chunk["change"] ** 2 / chunk["diff"], reverse=True)
-        new_top_three = {}
+        top_three_chunks = []
         if len(sorted_chunks) > 0:
             text2 = "За цими координатами помічено найбільшу ворожу активність:"
             for i, chunk in enumerate(sorted_chunks):
                 if i == 3:
                     break
-                key = chunk['key']
-                if key in top_three.keys():
-                    if top_three[key] == 1:
-                        text2 += f"\n❗️{chunk['pixel_link']}  +{chunk['change']}"
-                    else:
-                        text2 += f"\n‼️{chunk['pixel_link']}  +{chunk['change']}"
-                    new_top_three[key] = top_three[key] + 1
-                else:
+                if chunk['combo'] == 0:
                     text2 += f"\n{chunk['pixel_link']}  +{chunk['change']}"
-                    new_top_three[key] = 1
-        top_three = new_top_three
-        for chatid in DB_CHATS:
-            try:
-                bot.send_message(chatid, text)
-                bot.send_document(chatid, fil,
-                                  caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
-                if text2 is not None:
-                    bot.send_message(chatid, text2)
-            except:
-                pass
+                elif chunk['combo'] == 1:
+                    text2 += f"\n❗️{chunk['pixel_link']}  +{chunk['change']}"
+                else:
+                    text2 += f"\n‼️{chunk['pixel_link']}  +{chunk['change']}"
+                top_three_chunks.append(chunk['key'])
+        for chunk in chunks_info:
+            if chunk['key'] not in top_three_chunks:
+                chunk['combo'] = 0
+            else:
+                chunk['combo'] += 1
+
+        bot.send_message(MAIN_CHATID, text)
+        send_document_retry(MAIN_CHATID, send_pil(pil_img),
+                            caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
+        if text2 is not None:
+            bot.send_message(MAIN_CHATID, text2)
         telegraph_url = generate_telegraph()
+        save_chunks_info()
     except Exception as e:
-        bot.send_message(ME, str(e))
+        ExHandler().handle(e)
     finally:
         is_running = False
 
@@ -1223,6 +1217,7 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler3,)).start()
     try:
         requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110")
+        load_chunks_info()
     except:
         pass
     app.run(host='0.0.0.0', port=80, threaded=True)
