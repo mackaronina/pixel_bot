@@ -1031,8 +1031,8 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
     elif chunk is not None:
         text += f"\n\nНайгарячіша точка: {chunk['pixel_link']}"
-        img = get_area_image(int(chunk['pixel_point'].split('_')[0]),
-                             int(chunk['pixel_point'].split('_')[1]),
+        img = get_area_image(int(chunk['key'].split('_')[0]) + 128,
+                             int(chunk['key'].split('_')[1]) + 128,
                              url, canvas_char)
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
