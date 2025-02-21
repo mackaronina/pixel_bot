@@ -36,11 +36,10 @@ telegraph_url = None
 
 class ExHandler(telebot.ExceptionHandler):
     def handle(self, exc):
-        bot.send_message(ME, str(exc))
         sio = StringIO(traceback.format_exc())
         sio.name = 'log.txt'
         sio.seek(0)
-        bot.send_document(ME, sio)
+        bot.send_document(ME, sio, caption=str(exc))
         return True
 
 
@@ -262,8 +261,10 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
             off_y = iy * 256 + offset
             chunk_diff = 0
             chunk_size = 0
+
+            chunk_pixel_coords = None
             chunk_pixel_link = None
-            chunk_pixel_point = None
+
             while len(data) < 65536:
                 data += bytes((0,))
             for i, b in enumerate(data):
@@ -280,17 +281,20 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 map_color = colors[bcl]
                 if color[0] != map_color[0] or color[1] != map_color[1] or color[2] != map_color[2]:
                     if chunk_diff == 0:
-                        chunk_pixel_link = link(canvas_char, base_url, tx, ty, 25)
-                        chunk_pixel_point = f"{tx}_{ty}"
+                        chunk_pixel_coords = (tx, ty)
                     chunk_diff += 1
                     img[x, y] = map_color
                 else:
                     img[x, y] = new_colors[bcl]
                 chunk_size += 1
 
-            if chunk_diff > 10000:
+            if 0 < chunk_diff <= 100:
+                chunk_pixel_link = link(canvas_char, base_url, chunk_pixel_coords[0], chunk_pixel_coords[1], 25)
+            elif 100 < chunk_diff <= 10000:
+                chunk_pixel_link = link(canvas_char, base_url, chunk_pixel_coords[0], chunk_pixel_coords[1], 10)
+            elif 10000 < chunk_diff:
                 chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
-                chunk_pixel_point = f"{off_x + 128}_{off_y + 128}"
+                chunk_pixel_coords = (off_x + 128, off_y + 128)
 
             result["diff"] += chunk_diff
             result["total_size"] += chunk_size
@@ -302,7 +306,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     "key": chunk_key,
                     "diff": chunk_diff,
                     "pixel_link": chunk_pixel_link,
-                    "pixel_point": chunk_pixel_point,
+                    "pixel_coords": chunk_pixel_coords,
                     "change": 0,
                     "combo": 0
                 })
@@ -311,7 +315,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                 result["change"] += chunk["change"]
                 chunk["diff"] = chunk_diff
                 chunk["pixel_link"] = chunk_pixel_link
-                chunk["pixel_point"] = chunk_pixel_point
+                chunk["pixel_coords"] = chunk_pixel_coords
             return
         except:
             await asyncio.sleep(1)
@@ -982,14 +986,10 @@ def get_hot_point():
     return sorted(chunks_copy, key=lambda chunk: calc_score(chunk), reverse=True)[0]
 
 
-def intersection_rectangles(x1, y1, x2, y2, x3, y3, x4, y4):
-    x5 = max(x1, x3)
-    y5 = max(y1, y3)
-    x6 = min(x2, x4)
-    y6 = min(y2, y4)
-    if x5 > x6 or y5 > y6:
-        return False
-    return True
+def point_in_rectangle(point_x, point_y, rect_x, rect_y, rect_w, rect_h):
+    if rect_x <= point_x <= rect_x + rect_w and rect_y <= point_y <= rect_y + rect_h:
+        return True
+    return False
 
 
 def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w, h):
@@ -1009,10 +1009,10 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
         y2 = int(result[3].replace(',', ''))
     else:
         return
-    if not intersection_rectangles(x1, y1, x2, y2, shablon_x, shablon_y, shablon_x + w, shablon_y + h):
+    rollback_x = round((x1 + x2) / 2)
+    rollback_y = round((y1 + y2) / 2)
+    if not point_in_rectangle(rollback_x, rollback_y, shablon_x, shablon_y, w, h):
         return
-    rollback_x = int((x1 + x2) / 2)
-    rollback_y = int((y1 + y2) / 2)
     text = f'<b>Помічений ролбек</b>\n{link(canvas_char, site, rollback_x, rollback_y, 10)}'
     img = get_area_image(rollback_x, rollback_y, site, canvas_char)
     send_photo_retry(MAIN_CHATID, img, caption=text)
@@ -1031,9 +1031,7 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         img = get_area_image(point['x'], point['y'], point['site'], point['canvas'])
     elif chunk is not None:
         text += f"\n\nНайгарячіша точка: {chunk['pixel_link']}"
-        img = get_area_image(int(chunk['pixel_point'].split('_')[0]),
-                             int(chunk['pixel_point'].split('_')[1]),
-                             url, canvas_char)
+        img = get_area_image(chunk['pixel_coords'][0], chunk['pixel_coords'][1], url, canvas_char)
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
     if img is not None:
