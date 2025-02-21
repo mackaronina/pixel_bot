@@ -797,7 +797,7 @@ def handle_text(message, txt):
         if parselink is None:
             return
         img = get_area_image(parselink['x'], parselink['y'], parselink['site'], parselink['canvas'])
-        send_photo_retry(message.chat.id, send_pil(img), reply_to_message_id=message.message_id)
+        send_photo_retry(message.chat.id, img, reply_to_message_id=message.message_id)
 
 
 @bot.chat_member_handler()
@@ -1015,7 +1015,7 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
     rollback_y = int((y1 + y2) / 2)
     text = f'<b>Помічений ролбек</b>\n{link(canvas_char, site, rollback_x, rollback_y, 10)}'
     img = get_area_image(rollback_x, rollback_y, site, canvas_char)
-    send_photo_retry(MAIN_CHATID, send_pil(img), caption=text)
+    send_photo_retry(MAIN_CHATID, img, caption=text)
 
 
 def check_void(msg_txt, canvas_char, url, ping_users):
@@ -1037,7 +1037,7 @@ def check_void(msg_txt, canvas_char, url, ping_users):
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
     if img is not None:
-        m = send_photo_retry(MAIN_CHATID, send_pil(img), caption=text)
+        m = send_photo_retry(MAIN_CHATID, img, caption=text)
     else:
         m = bot.send_message(MAIN_CHATID, text)
     for ping_five in ping_list:
@@ -1105,7 +1105,7 @@ def shablon_crop():
     pil_img = PIL.Image.fromarray(img)
     del img
     width, height = pil_img.size
-    m = send_document_retry(SERVICE_CHATID, send_pil(pil_img))
+    m = send_document_retry(SERVICE_CHATID, pil_img)
     fil = m.document.file_id
     set_config_value("X", x)
     set_config_value("Y", y)
@@ -1118,7 +1118,7 @@ def shablon_crop():
 def send_document_retry(chatid, document, caption=None, reply_to_message_id=None):
     for attempts in range(5):
         try:
-            m = bot.send_document(chatid, document, caption=caption, reply_to_message_id=reply_to_message_id)
+            m = bot.send_document(chatid, send_pil(document), caption=caption, reply_to_message_id=reply_to_message_id)
             return m
         except:
             time.sleep(1)
@@ -1128,7 +1128,7 @@ def send_document_retry(chatid, document, caption=None, reply_to_message_id=None
 def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None):
     for attempts in range(5):
         try:
-            m = bot.send_photo(chatid, photo, caption=caption, reply_to_message_id=reply_to_message_id)
+            m = bot.send_photo(chatid, send_pil(photo), caption=caption, reply_to_message_id=reply_to_message_id)
             return m
         except:
             time.sleep(1)
@@ -1192,7 +1192,7 @@ def job_hour():
                 chunk['combo'] += 1
 
         bot.send_message(MAIN_CHATID, text)
-        send_document_retry(MAIN_CHATID, send_pil(pil_img),
+        send_document_retry(MAIN_CHATID, pil_img,
                             caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
         if text2 is not None:
             bot.send_message(MAIN_CHATID, text2)
