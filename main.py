@@ -1216,8 +1216,8 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler2,)).start()
     Thread(target=updater, args=(scheduler3,)).start()
     try:
-        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110")
         load_chunks_info()
-    except:
-        pass
+        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110")
+    except Exception as e:
+        ExHandler().handle(e)
     app.run(host='0.0.0.0', port=80, threaded=True)
