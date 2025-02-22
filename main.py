@@ -1205,7 +1205,7 @@ def job_hour():
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
     scheduler1 = schedule.Scheduler()
-    scheduler1.every(30).minutes.do(job_hour)
+    scheduler1.every(60).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
     scheduler2.every().day.at("23:00").do(job_day)
     scheduler3 = schedule.Scheduler()
