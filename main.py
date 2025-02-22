@@ -980,7 +980,7 @@ def calc_score(chunk):
 def get_hot_point():
     if len(chunks_info) == 0:
         return None
-    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 0 and chunk["diff"] > 100]
+    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 100]
     if len(chunks_copy) == 0:
         return None
     return sorted(chunks_copy, key=lambda chunk: calc_score(chunk), reverse=True)[0]
@@ -1205,7 +1205,7 @@ def job_hour():
 if __name__ == '__main__':
     bot.send_message(ME, "ok")
     scheduler1 = schedule.Scheduler()
-    scheduler1.every(60).minutes.do(job_hour)
+    scheduler1.every(30).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
     scheduler2.every().day.at("23:00").do(job_day)
     scheduler3 = schedule.Scheduler()
