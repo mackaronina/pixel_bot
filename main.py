@@ -1071,11 +1071,11 @@ def job_minute():
                 msg_txt = msg[1].lower()
             if msg_time in processed_messages or time.time() - msg_time > 120:
                 continue
+            processed_messages.append(msg_time)
             if msg_sender == "event":
                 check_void(msg_txt, canvas_char, url, ping_users)
             elif msg_sender == "info":
                 check_rollback(msg_txt, url, cropped, canvas_char, shablon_x, shablon_y, w, h)
-            processed_messages.append(msg_time)
     except Exception as e:
         ExHandler().handle(e)
 
