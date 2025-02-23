@@ -1215,7 +1215,7 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler3,)).start()
     try:
         load_chunks_info()
-        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110")
+        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110", timeout=5)
     except Exception as e:
         ExHandler().handle(e)
     app.run(host='0.0.0.0', port=80, threaded=True)
