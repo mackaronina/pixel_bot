@@ -580,7 +580,8 @@ def calc_medals(medal_list):
 
 @bot.message_handler(commands=["minfo", "medal_info"])
 def msg_medal(message):
-    if message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+    if (message.reply_to_message is None or message.reply_to_message.from_user.id < 0
+            or message.reply_to_message.id == message.message_thread_id):
         user_id = message.from_user.id
     else:
         user_id = message.reply_to_message.from_user.id
@@ -603,7 +604,8 @@ def msg_medal_plus(message):
     if not check_access(message):
         return
     medal_name = extract_text(message.text)
-    if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+    if (len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0
+            or message.reply_to_message.id == message.message_thread_id):
         bot.reply_to(message,
                      "Формат команди: /mplus [назва медалі]\nЦією командою можна видати медаль відповіддю на повідомлення людини, яка цю медаль отримає\nПриклади:\n/mplus За взяття хуя за щоку")
         return
@@ -625,7 +627,8 @@ def msg_medal_minus(message):
     if not check_access(message):
         return
     medal_name = extract_text(message.text)
-    if len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0:
+    if (len(medal_name) < 1 or message.reply_to_message is None or message.reply_to_message.from_user.id < 0
+            or message.reply_to_message.id == message.message_thread_id):
         bot.reply_to(message,
                      "Формат команди: /mminus [назва медалі]\nЦією командою можна забрати медаль відповіддю на повідомлення людини, у якої ця медаль є\nПриклади:\n/mminus За взяття хуя за щоку")
         return
@@ -1218,7 +1221,7 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler3,)).start()
     try:
         load_chunks_info()
-        # requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110", timeout=5)
+        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110", timeout=5)
     except Exception as e:
         ExHandler().handle(e)
     app.run(host='0.0.0.0', port=80, threaded=True)
