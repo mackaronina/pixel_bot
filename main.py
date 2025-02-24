@@ -585,7 +585,6 @@ def msg_medal(message):
         user_id = message.from_user.id
     else:
         user_id = message.reply_to_message.from_user.id
-    bot.send_message(ME, f'{message.chat.id} {message.from_user.id} {message.reply_to_message.from_user.id} {user_id}')
     user = get_medal_user(user_id)
     if user is None or len(user['medal_list']) < 1:
         if user_id == message.from_user.id:
