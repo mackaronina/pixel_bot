@@ -584,6 +584,7 @@ def msg_medal(message):
         user_id = message.from_user.id
     else:
         user_id = message.reply_to_message.from_user.id
+    bot.send_message(ME, f'{message.chat.id} {message.from_user.id} {message.reply_to_message.from_user.id} {user_id}')
     user = get_medal_user(user_id)
     if user is None or len(user['medal_list']) < 1:
         if user_id == message.from_user.id:
@@ -1217,7 +1218,7 @@ if __name__ == '__main__':
     Thread(target=updater, args=(scheduler3,)).start()
     try:
         load_chunks_info()
-        requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110", timeout=5)
+        # requests.post('https://nekocringebot.onrender.com/send_map', impersonate="chrome110", timeout=5)
     except Exception as e:
         ExHandler().handle(e)
     app.run(host='0.0.0.0', port=80, threaded=True)
