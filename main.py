@@ -67,9 +67,9 @@ def get_config_value(key):
 
 def set_config_value(key, value, clear=True):
     if get_config_value(key) is None:
-        cursor.execute(f"INSERT INTO key_value (key, value) VALUES ('{key}', '{value}')")
+        cursor.execute(f"INSERT INTO key_value (key, value) VALUES (%s, %s)", key, value)
     else:
-        cursor.execute(f"UPDATE key_value SET value = '{value}' WHERE key = '{key}'")
+        cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", value, key)
     if clear and len(chunks_info) > 0:
         chunks_info.clear()
         save_chunks_info()
@@ -774,9 +774,9 @@ def msg_text(message):
     if message.chat.id not in DB_CHATS:
         return
     if message.text is not None:
-        handle_text(message, message.text)
+        handle_text(message, message.text, message.html_text)
     elif message.caption is not None:
-        handle_text(message, message.caption)
+        handle_text(message, message.caption, message.html_caption)
 
 
 def get_area_image(center_x, center_y, site, canvas_char):
@@ -789,9 +789,11 @@ def get_area_image(center_x, center_y, site, canvas_char):
     return img
 
 
-def handle_text(message, txt):
+def handle_text(message, txt, html_text):
     low = txt.lower()
     search_res = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
+    if message.message_thread_id is not None and message.message_thread_id == COORDINATION_TOPIC:
+        set_config_value("PINNED_TEXT", html_text, False)
     if re.search(r'\bсбу\b', low):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
@@ -875,12 +877,8 @@ def get_shablon_pictrue():
 
 
 def pin_to_html():
-    msg = bot.get_chat(MAIN_CHATID).pinned_message
-    if msg is not None and msg.text is not None:
-        text = msg.html_text
-    elif msg is not None and msg.caption is not None:
-        text = msg.html_caption
-    else:
+    text = get_config_value("PINNED_TEXT")
+    if text is None:
         return ''
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
     urls = [x[0] for x in re.findall(regex, text)]
@@ -914,12 +912,8 @@ def remove_duplicates(lst):
 
 
 def points_from_pin():
-    msg = bot.get_chat(MAIN_CHATID).pinned_message
-    if msg is not None and msg.text is not None:
-        text = msg.html_text
-    elif msg is not None and msg.caption is not None:
-        text = msg.html_caption
-    else:
+    text = get_config_value("PINNED_TEXT")
+    if text is None:
         return []
     points = []
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"""
