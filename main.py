@@ -796,6 +796,8 @@ def handle_text(message, txt):
         bot.send_sticker(message.chat.id,
                          'CAACAgIAAxkBAAEKWrBlDPH3Ok1hxuoEndURzstMhckAAWYAAm8sAAIZOLlLPx0MDd1u460wBA',
                          reply_to_message_id=message.message_id)
+    elif re.search(r'\bwhen ppf\b', low):
+        bot.reply_to(message, 'Never')
     elif search_res is not None and message.photo is None:
         parselink = parse_pixel_url(search_res[0])
         if parselink is None:
