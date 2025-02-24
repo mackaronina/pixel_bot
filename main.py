@@ -1035,12 +1035,14 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         m = send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=VOID_TOPIC)
     else:
         m = bot.send_message(MAIN_CHATID, text, message_thread_id=VOID_TOPIC)
+    """
     for ping_five in ping_list:
         txt = ''
         for user in ping_five:
             txt += f'<a href="tg://user?id={user}">ㅤ</a>'
         bot.reply_to(m, txt)
         time.sleep(0.5)
+    """
 
 
 def job_minute():
