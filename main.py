@@ -960,9 +960,10 @@ def job_day():
                         text += f". Перше місце - {country.flag}"
                     else:
                         text += f". Перше місце - <b>{first}</b>"
-                bot.send_message(MAIN_CHATID, text)
+                bot.send_message(MAIN_CHATID, text, message_thread_id=GENERAL_TOPIC)
                 bot.send_sticker(MAIN_CHATID,
-                                 'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE')
+                                 'CAACAgIAAxkBAAEKWq5lDOyAX1vNodaWsT5amK0vGQe_ggACHCkAAspLuUtESxXfKFwfWTAE',
+                                 message_thread_id=GENERAL_TOPIC)
                 break
             elif i == 0:
                 first = country["cc"]
@@ -1015,7 +1016,7 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
         return
     text = f'<b>Помічений ролбек</b>\n{link(canvas_char, site, rollback_x, rollback_y, 10)}'
     img = get_area_image(rollback_x, rollback_y, site, canvas_char)
-    send_photo_retry(MAIN_CHATID, img, caption=text)
+    send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=GENERAL_TOPIC)
 
 
 def check_void(msg_txt, canvas_char, url, ping_users):
@@ -1035,9 +1036,9 @@ def check_void(msg_txt, canvas_char, url, ping_users):
     text += "\n\nОтримай актуальний шаблон командою /shablon"
     ping_list = to_matrix(ping_users, 5)
     if img is not None:
-        m = send_photo_retry(MAIN_CHATID, img, caption=text)
+        m = send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=VOID_TOPIC)
     else:
-        m = bot.send_message(MAIN_CHATID, text)
+        m = bot.send_message(MAIN_CHATID, text, message_thread_id=VOID_TOPIC)
     for ping_five in ping_list:
         txt = ''
         for user in ping_five:
@@ -1113,20 +1114,22 @@ def shablon_crop():
     set_config_value("HEIGHT", height)
 
 
-def send_document_retry(chatid, document, caption=None, reply_to_message_id=None):
+def send_document_retry(chatid, document, caption=None, reply_to_message_id=None, message_thread_id=None):
     for attempts in range(5):
         try:
-            m = bot.send_document(chatid, send_pil(document), caption=caption, reply_to_message_id=reply_to_message_id)
+            m = bot.send_document(chatid, send_pil(document), caption=caption, reply_to_message_id=reply_to_message_id,
+                                  message_thread_id=message_thread_id)
             return m
         except:
             time.sleep(1)
     raise Exception("Failed to send file")
 
 
-def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None):
+def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None, message_thread_id=None):
     for attempts in range(5):
         try:
-            m = bot.send_photo(chatid, send_pil(photo), caption=caption, reply_to_message_id=reply_to_message_id)
+            m = bot.send_photo(chatid, send_pil(photo), caption=caption, reply_to_message_id=reply_to_message_id,
+                               message_thread_id=message_thread_id)
             return m
         except:
             time.sleep(1)
@@ -1189,11 +1192,12 @@ def job_hour():
             else:
                 chunk['combo'] += 1
 
-        bot.send_message(MAIN_CHATID, text)
+        bot.send_message(MAIN_CHATID, text, message_thread_id=GENERAL_TOPIC)
         send_document_retry(MAIN_CHATID, pil_img,
-                            caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати")
+                            caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати",
+                            message_thread_id=GENERAL_TOPIC)
         if text2 is not None:
-            bot.send_message(MAIN_CHATID, text2)
+            bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
         telegraph_url = generate_telegraph()
         save_chunks_info()
     except Exception as e:
