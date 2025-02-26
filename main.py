@@ -67,9 +67,9 @@ def get_config_value(key):
 
 def set_config_value(key, value, clear=True):
     if get_config_value(key) is None:
-        cursor.execute(f"INSERT INTO key_value (key, value) VALUES (%s, %s)", key, value)
+        cursor.execute(f"INSERT INTO key_value (key, value) VALUES (%s, %s)", key, str(value))
     else:
-        cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", value, key)
+        cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", str(value), key)
     if clear and len(chunks_info) > 0:
         chunks_info.clear()
         save_chunks_info()
