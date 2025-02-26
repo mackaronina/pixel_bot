@@ -288,11 +288,9 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     img[x, y] = new_colors[bcl]
                 chunk_size += 1
 
-            if 0 < chunk_diff <= 100:
+            if 0 < chunk_diff <= 200:
                 chunk_pixel_link = link(canvas_char, base_url, chunk_pixel_coords[0], chunk_pixel_coords[1], 25)
-            elif 100 < chunk_diff <= 10000:
-                chunk_pixel_link = link(canvas_char, base_url, chunk_pixel_coords[0], chunk_pixel_coords[1], 10)
-            elif 10000 < chunk_diff:
+            elif 200 < chunk_diff:
                 chunk_pixel_link = link(canvas_char, base_url, off_x + 128, off_y + 128, 10)
                 chunk_pixel_coords = (off_x + 128, off_y + 128)
 
@@ -795,7 +793,7 @@ def get_area_image(center_x, center_y, site, canvas_char):
 def handle_text(message, txt, html_text):
     low = txt.lower()
     search_res = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
-    if message.message_thread_id is not None and message.message_thread_id == COORDINATION_TOPIC:
+    if message.message_thread_id is not None and message.message_thread_id in COORDINATION_TOPIC:
         set_config_value("PINNED_TEXT", html_text, False)
     if re.search(r'\bсбу\b', low):
         bot.send_sticker(message.chat.id,

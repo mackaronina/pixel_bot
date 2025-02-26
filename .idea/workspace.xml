@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="08010453-49d9-4ae7-90f5-93a1ac82813a" name="Changes" comment="Some commit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -391,15 +392,9 @@
       <workItem from="1740416454596" duration="68000" />
       <workItem from="1740420919562" duration="756000" />
       <workItem from="1740423139338" duration="2966000" />
-      <workItem from="1740426137685" duration="13000" />
-    </task>
-    <task id="LOCAL-00031" summary="Some commit">
-      <option name="closed" value="true" />
-      <created>1738242186745</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1738242186745</updated>
+      <workItem from="1740426137685" duration="428000" />
+      <workItem from="1740427564898" duration="11000" />
+      <workItem from="1740531959233" duration="1099000" />
     </task>
     <task id="LOCAL-00032" summary="Some commit">
       <option name="closed" value="true" />
@@ -785,7 +780,15 @@
       <option name="project" value="LOCAL" />
       <updated>1740426119562</updated>
     </task>
-    <option name="localTasksCounter" value="80" />
+    <task id="LOCAL-00080" summary="Some commit">
+      <option name="closed" value="true" />
+      <created>1740426155296</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1740426155296</updated>
+    </task>
+    <option name="localTasksCounter" value="81" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
