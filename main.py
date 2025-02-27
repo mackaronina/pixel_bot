@@ -1,4 +1,5 @@
 import asyncio
+import colorsys
 import html
 import json
 import math
@@ -73,6 +74,12 @@ def set_config_value(key, value, clear=True):
     if clear and len(chunks_info) > 0:
         chunks_info.clear()
         save_chunks_info()
+        clear_value("MARKER_FILE")
+
+
+def clear_value(key):
+    if get_config_value(key) is not None:
+        cursor.execute(f"UPDATE key_value SET value = NULL WHERE key = %s", key)
 
 
 def load_chunks_info():
@@ -84,6 +91,13 @@ def load_chunks_info():
 
 def save_chunks_info():
     set_config_value("CHUNKS_INFO", json.dumps(chunks_info, ensure_ascii=False), False)
+
+
+def save_pixel_marker(pixel_marker):
+    m = send_document_retry(SERVICE_CHATID, pixel_marker)
+    del pixel_marker
+    fil = m.document.file_id
+    set_config_value("MARKER_FILE", fil, False)
 
 
 def get_medal_user(user_id):
@@ -143,16 +157,20 @@ def check_in(array_to_check, list_np_arrays):
     return False
 
 
-def new_color(color):
-    R1 = int(color[0])
-    G1 = int(color[1])
-    B1 = int(color[2])
-    R2, G2, B2 = (0, 255, 0)
-    Blend = 0.9
-    R = R1 + (R2 - R1) * Blend
-    G = G1 + (G2 - G1) * Blend
-    B = B1 + (B2 - B1) * Blend
-    return np.array([R, G, B], dtype=np.uint8)
+def change_brightness(color, brightness=0.5):
+    hsv = colorsys.rgb_to_hsv(round(255 / int(color[0])), round(255 / int(color[1])), round(255 / int(color[2])))
+    hsv[2] *= brightness
+    r, g, b = colorsys.hsv_to_rgb(*hsv)
+    return np.array([round(r * 255), round(g * 255), round(b * 255)], dtype=np.uint8)
+
+
+def new_color(color, blend_color=(0, 255, 0), blend=0.9):
+    r1, g1, b1 = int(color[0]), int(color[1]), int(color[2])
+    r2, g2, b2 = int(blend_color[0]), int(blend_color[1]), int(blend_color[2])
+    r = r1 + (r2 - r1) * blend
+    g = g1 + (g2 - g1) * blend
+    b = b1 + (b2 - b1) * blend
+    return np.array([r, g, b], dtype=np.uint8)
 
 
 def link(canvas_char, url, x, y, zoom):
@@ -244,8 +262,9 @@ def find_chunk_by_key(chunk_key):
     return next((chunk for chunk in chunks_info if chunk['key'] == chunk_key), None)
 
 
-async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result, img, start_x, start_y, width,
-                height, new_colors, canvas_char):
+async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, start_x, start_y, width,
+                height, canvas_char, green_colors, blue_colors, red_colors, faded_colors, colors, pixel_marker,
+                use_marker):
     url = f"http://{base_url}/chunks/{canvas_id}/{ix}/{iy}.bmp"
     for attempts in range(5):
         try:
@@ -283,9 +302,17 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
                     if chunk_diff == 0:
                         chunk_pixel_coords = (tx, ty)
                     chunk_diff += 1
-                    img[x, y] = map_color
+                    if use_marker and pixel_marker[x, y]:
+                        img[x, y] = red_colors[bcl]
+                    else:
+                        img[x, y] = faded_colors[bcl]
+                    pixel_marker[x, y] = False
                 else:
-                    img[x, y] = new_colors[bcl]
+                    if use_marker and not pixel_marker[x, y]:
+                        img[x, y] = blue_colors[bcl]
+                    else:
+                        img[x, y] = green_colors[bcl]
+                    pixel_marker[x, y] = True
                 chunk_size += 1
 
             if 0 < chunk_diff <= 200:
@@ -320,7 +347,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, result,
     result["error"] = True
 
 
-async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colors, url, img, new_colors, canvas_char):
+async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, url, img, canvas_char,
+                   green_colors, blue_colors, red_colors, faded_colors, colors, pixel_marker, use_marker):
     result = {
         "error": False,
         "total_size": 0,
@@ -338,8 +366,9 @@ async def get_area(canvas_id, canvas_size, start_x, start_y, width, height, colo
         for iy in range(yc, hc + 1):
             for ix in range(xc, wc + 1):
                 threads.append(
-                    fetch(session, canvas_id, canvasoffset, ix, iy, colors, url, result, img, start_x, start_y, width,
-                          height, new_colors, canvas_char))
+                    fetch(session, canvas_id, canvasoffset, ix, iy, url, result, img, start_x, start_y, width,
+                          height, canvas_char, green_colors, blue_colors, red_colors, faded_colors, colors,
+                          pixel_marker, use_marker))
         await asyncio.gather(*threads)
     if result["error"]:
         raise Exception("Failed to load area")
@@ -444,6 +473,19 @@ def get_pil(fid):
     bio.seek(0, 0)
     im = PIL.Image.open(bio)
     return im
+
+
+def get_numpy(fid):
+    file_info = bot.get_file(fid)
+    downloaded_file = bot.download_file(file_info.file_path)
+    return np.frombuffer(downloaded_file, dtype=np.bool)
+
+
+def send_numpy(ar):
+    bio = BytesIO(ar.tobytes())
+    bio.name = 'result.bin'
+    bio.seek(0, 0)
+    return bio
 
 
 def extract_arg(arg):
@@ -705,7 +747,7 @@ def msg_shablon(message):
     if repl.document.mime_type != 'image/png':
         bot.reply_to(message, "Файл не у форматі png, сосі")
         return
-    set_config_value("FILE", repl.document.file_id)
+    set_config_value("SHABLON_FILE", repl.document.file_id)
     set_config_value("CROPPED", False)
     bot.reply_to(message, "Ок, все норм")
 
@@ -755,7 +797,7 @@ def msg_shablon_info(message):
     url = get_config_value("URL")
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    file = get_config_value("FILE")
+    file = get_config_value("SHABLON_FILE")
     bot.send_document(message.chat.id, file, caption=f"<code>{x}_{y}</code>\n\n{url}",
                       reply_to_message_id=message.message_id)
 
@@ -784,7 +826,7 @@ def get_area_image(center_x, center_y, site, canvas_char):
     x = center_x - 200
     y = center_y - 150
     canvas, _ = fetch_me(site, canvas_char)
-    colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
+    colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
     img = PIL.Image.fromarray(img)
     return img
@@ -868,7 +910,7 @@ def get_ok():
 
 @app.route('/shablon_picture')
 def get_shablon_pictrue():
-    file = get_config_value("FILE")
+    file = get_config_value("SHABLON_FILE")
     file_info = bot.get_file(file)
     downloaded_file = bot.download_file(file_info.file_path)
     bio = BytesIO(downloaded_file)
@@ -930,7 +972,7 @@ def points_from_pin():
 def get_shablon_info():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    pic_hash = get_config_value("FILE")
+    pic_hash = get_config_value("SHABLON_FILE")
     points = points_from_pin()
     text = pin_to_html()
     return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
@@ -1086,7 +1128,7 @@ def shablon_crop():
         return
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    file = get_config_value("FILE")
+    file = get_config_value("SHABLON_FILE")
     url = get_config_value("URL")
     canvas_char = get_config_value("CANVAS")
     img = get_pil(file)
@@ -1107,17 +1149,23 @@ def shablon_crop():
     fil = m.document.file_id
     set_config_value("X", x)
     set_config_value("Y", y)
-    set_config_value("FILE", fil)
+    set_config_value("SHABLON_FILE", fil)
     set_config_value("CROPPED", True)
     set_config_value("WIDTH", width)
     set_config_value("HEIGHT", height)
 
 
-def send_document_retry(chatid, document, caption=None, reply_to_message_id=None, message_thread_id=None):
+def send_document_retry(chatid, document, caption=None, reply_to_message_id=None, message_thread_id=None, as_bin=False):
     for attempts in range(5):
         try:
-            m = bot.send_document(chatid, send_pil(document), caption=caption, reply_to_message_id=reply_to_message_id,
-                                  message_thread_id=message_thread_id)
+            if as_bin:
+                m = bot.send_document(chatid, send_numpy(document), caption=caption,
+                                      reply_to_message_id=reply_to_message_id,
+                                      message_thread_id=message_thread_id)
+            else:
+                m = bot.send_document(chatid, send_pil(document), caption=caption,
+                                      reply_to_message_id=reply_to_message_id,
+                                      message_thread_id=message_thread_id)
             return m
         except:
             time.sleep(1)
@@ -1146,18 +1194,32 @@ def job_hour():
         url = get_config_value("URL")
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
-        file = get_config_value("FILE")
+        file = get_config_value("SHABLON_FILE")
+        marker_file = get_config_value("MARKER_FILE")
         canvas_char = get_config_value("CANVAS")
         img = np.array(get_pil(file).convert('RGB'), dtype=np.uint8)
+
+        if marker_file is None:
+            pixel_marker = np.full(img.shape, False, dtype=np.bool)
+            use_marker = False
+        else:
+            pixel_marker = np.reshape(get_numpy(marker_file), img.shape)
+            use_marker = True
+
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
         canvas, _ = fetch_me(url, canvas_char)
-        colors = [np.array([color[0], color[1], color[2]], dtype=np.uint8) for color in canvas["colors"]]
-        new_colors = [new_color(color) for color in colors]
+
+        colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
+        green_colors = [new_color(color, (0, 255, 0)) for color in colors]
+        blue_colors = [new_color(color, (0, 0, 255)) for color in colors]
+        red_colors = [new_color(color, (255, 0, 0)) for color in colors]
+        faded_colors = [change_brightness(color, 0.5) for color in colors]
+
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
-            get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, colors, url, img, new_colors,
-                     canvas_char))
+            get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, url, img, canvas_char, green_colors,
+                     blue_colors, red_colors, faded_colors, colors, pixel_marker, use_marker))
         total_size = result["total_size"]
         diff = result["diff"]
         change = result["change"]
@@ -1198,7 +1260,9 @@ def job_hour():
         if text2 is not None:
             bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
         telegraph_url = generate_telegraph()
+
         save_chunks_info()
+        save_pixel_marker(pixel_marker)
     except Exception as e:
         ExHandler().handle(e)
     finally:
