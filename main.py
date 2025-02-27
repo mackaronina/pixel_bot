@@ -159,8 +159,7 @@ def check_in(array_to_check, list_np_arrays):
 
 def change_brightness(color, brightness=0.5):
     hsv = colorsys.rgb_to_hsv(round(255 / int(color[0])), round(255 / int(color[1])), round(255 / int(color[2])))
-    hsv[2] *= brightness
-    r, g, b = colorsys.hsv_to_rgb(*hsv)
+    r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2] * brightness)
     return np.array([round(r * 255), round(g * 255), round(b * 255)], dtype=np.uint8)
 
 
@@ -1195,6 +1194,7 @@ def job_hour():
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
         file = get_config_value("SHABLON_FILE")
+        bot.send_message(ME, str(file))
         marker_file = get_config_value("MARKER_FILE")
         canvas_char = get_config_value("CANVAS")
         img = np.array(get_pil(file).convert('RGB'), dtype=np.uint8)
