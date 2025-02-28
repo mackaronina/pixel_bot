@@ -337,7 +337,8 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, st
                 chunk["pixel_link"] = chunk_pixel_link
                 chunk["pixel_coords"] = chunk_pixel_coords
             return
-        except:
+        except Exception as e:
+            ExHandler().handle(e)
             await asyncio.sleep(1)
     result["error"] = True
 
