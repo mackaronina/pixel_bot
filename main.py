@@ -471,14 +471,15 @@ def get_pil(fid):
     return im
 
 
-def get_numpy(fid):
+def get_numpy(fid, size, shape):
     file_info = bot.get_file(fid)
     downloaded_file = bot.download_file(file_info.file_path)
-    return np.copy(np.frombuffer(downloaded_file, dtype=np.bool))
+    return np.unpackbits(np.frombuffer(downloaded_file, dtype=np.uint8), axis=None)[:size].reshape(shape).astype(
+        np.bool)
 
 
 def send_numpy(ar):
-    bio = BytesIO(ar.tobytes())
+    bio = BytesIO(np.packbits(ar, axis=None).tobytes())
     bio.name = 'result.bin'
     bio.seek(0, 0)
     return bio
@@ -1203,7 +1204,7 @@ def job_hour():
             pixel_marker = np.full((shablon_h, shablon_w), False, dtype=np.bool)
             use_marker = False
         else:
-            pixel_marker = np.reshape(get_numpy(marker_file), (shablon_h, shablon_w))
+            pixel_marker = get_numpy(marker_file, shablon_h * shablon_w, (shablon_h, shablon_w))
             use_marker = True
 
         canvas, _ = fetch_me(url, canvas_char)
