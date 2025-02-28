@@ -1210,7 +1210,7 @@ def job_hour():
 
         colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
         green_colors = [new_color(color, (0, 255, 0)) for color in colors]
-        blue_colors = [new_color(color, (0, 0, 255)) for color in colors]
+        blue_colors = [new_color(color, (0, 255, 255)) for color in colors]
         red_colors = [new_color(color, (255, 0, 0)) for color in colors]
         faded_colors = [change_brightness(color, 0.5) for color in colors]
 
@@ -1253,7 +1253,7 @@ def job_hour():
 
         bot.send_message(MAIN_CHATID, text, message_thread_id=GENERAL_TOPIC)
         send_document_retry(MAIN_CHATID, pil_img,
-                            caption="Зеленим - пікселі за шаблоном\nЧервоним - вороже просування\nСинім - наше просування\nІнші кольори - пікселі не по шаблону",
+                            caption="Зеленим - пікселі за шаблоном\nЧервоним - вороже просування\nБлакитним - наше просування\nІнші кольори - пікселі не по шаблону",
                             message_thread_id=GENERAL_TOPIC)
         if text2 is not None:
             bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
