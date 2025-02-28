@@ -94,7 +94,7 @@ def save_chunks_info():
 
 
 def save_pixel_marker(pixel_marker):
-    m = send_document_retry(SERVICE_CHATID, pixel_marker)
+    m = send_document_retry(SERVICE_CHATID, pixel_marker, as_bin=True)
     del pixel_marker
     fil = m.document.file_id
     set_config_value("MARKER_FILE", fil, False)
@@ -157,7 +157,7 @@ def check_in(array_to_check, list_np_arrays):
     return False
 
 
-def change_brightness(color, brightness=0.8):
+def change_brightness(color, brightness=0.6):
     hsv = colorsys.rgb_to_hsv(int(color[0]) / 255, int(color[1]) / 255, int(color[2]) / 255)
     r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2] * brightness)
     return np.array([round(r * 255), round(g * 255), round(b * 255)], dtype=np.uint8)
@@ -1155,7 +1155,7 @@ def shablon_crop():
 
 
 def send_document_retry(chatid, document, caption=None, reply_to_message_id=None, message_thread_id=None, as_bin=False):
-    for attempts in range(5):
+    for attempts in range(10):
         try:
             if as_bin:
                 m = bot.send_document(chatid, send_numpy(document), caption=caption,
@@ -1166,18 +1166,20 @@ def send_document_retry(chatid, document, caption=None, reply_to_message_id=None
                                       reply_to_message_id=reply_to_message_id,
                                       message_thread_id=message_thread_id)
             return m
-        except:
+        except Exception as e:
+            ExHandler().handle(e)
             time.sleep(1)
     raise Exception("Failed to send file")
 
 
 def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None, message_thread_id=None):
-    for attempts in range(5):
+    for attempts in range(10):
         try:
             m = bot.send_photo(chatid, send_pil(photo), caption=caption, reply_to_message_id=reply_to_message_id,
                                message_thread_id=message_thread_id)
             return m
-        except:
+        except Exception as e:
+            ExHandler().handle(e)
             time.sleep(1)
     raise Exception("Failed to send photo")
 
@@ -1194,7 +1196,6 @@ def job_hour():
         x = int(get_config_value("X"))
         y = int(get_config_value("Y"))
         file = get_config_value("SHABLON_FILE")
-        bot.send_message(ME, str(file))
         marker_file = get_config_value("MARKER_FILE")
         canvas_char = get_config_value("CANVAS")
         img = np.array(get_pil(file).convert('RGB'), dtype=np.uint8)
@@ -1214,7 +1215,7 @@ def job_hour():
         green_colors = [new_color(color, (0, 255, 0)) for color in colors]
         blue_colors = [new_color(color, (0, 0, 255)) for color in colors]
         red_colors = [new_color(color, (255, 0, 0)) for color in colors]
-        faded_colors = [change_brightness(color, 0.8) for color in colors]
+        faded_colors = [change_brightness(color, 0.6) for color in colors]
 
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
