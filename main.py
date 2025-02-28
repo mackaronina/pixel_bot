@@ -474,7 +474,7 @@ def get_pil(fid):
 def get_numpy(fid):
     file_info = bot.get_file(fid)
     downloaded_file = bot.download_file(file_info.file_path)
-    return np.frombuffer(downloaded_file, dtype=np.uint8)
+    return np.copy(np.frombuffer(downloaded_file, dtype=np.bool))
 
 
 def send_numpy(ar):
@@ -1205,8 +1205,7 @@ def job_hour():
         else:
             pixel_marker = np.reshape(get_numpy(marker_file), (shablon_h, shablon_w))
             use_marker = True
-        pixel_marker.setflags(write=True)
-        
+
         canvas, _ = fetch_me(url, canvas_char)
 
         colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
