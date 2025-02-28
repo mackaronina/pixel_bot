@@ -67,10 +67,7 @@ def get_config_value(key):
 
 
 def set_config_value(key, value, clear=True):
-    if get_config_value(key) is None:
-        cursor.execute(f"INSERT INTO key_value (key, value) VALUES (%s, %s)", key, str(value))
-    else:
-        cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", str(value), key)
+    cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", str(value), key)
     if clear and len(chunks_info) > 0:
         chunks_info.clear()
         save_chunks_info()
@@ -78,8 +75,7 @@ def set_config_value(key, value, clear=True):
 
 
 def clear_value(key):
-    if get_config_value(key) is not None:
-        cursor.execute(f"UPDATE key_value SET value = NULL WHERE key = %s", key)
+    cursor.execute(f"UPDATE key_value SET value = NULL WHERE key = %s", key)
 
 
 def load_chunks_info():
@@ -1256,7 +1252,7 @@ def job_hour():
 
         bot.send_message(MAIN_CHATID, text, message_thread_id=GENERAL_TOPIC)
         send_document_retry(MAIN_CHATID, pil_img,
-                            caption="Зеленим пікселі за шаблоном, іншими кольорами - ні. Використовуй цю мапу щоб знайти пікселі, які потрібно замалювати",
+                            caption="Зеленим - пікселі за шаблоном\nЧервоним - вороже просування\nСинім - наше просування\nІнші кольори - пікселі не по шаблону",
                             message_thread_id=GENERAL_TOPIC)
         if text2 is not None:
             bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
