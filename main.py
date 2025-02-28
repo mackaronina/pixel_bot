@@ -153,7 +153,7 @@ def check_in(array_to_check, list_np_arrays):
     return False
 
 
-def change_brightness(color, brightness=0.6):
+def change_brightness(color, brightness=0.5):
     hsv = colorsys.rgb_to_hsv(int(color[0]) / 255, int(color[1]) / 255, int(color[2]) / 255)
     r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2] * brightness)
     return np.array([round(r * 255), round(g * 255), round(b * 255)], dtype=np.uint8)
@@ -830,7 +830,7 @@ def get_area_image(center_x, center_y, site, canvas_char):
 
 def handle_text(message, txt, html_text):
     low = txt.lower()
-    search_res = re.search(r'\w+\.fun/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
+    search_res = re.search(r'\w+(?:\.fun|\.xyz)/#\w,[-+]?[0-9]+,[-+]?[0-9]+,[-+]?[0-9]+', low)
     if message.message_thread_id is not None and message.message_thread_id in COORDINATION_TOPIC:
         set_config_value("PINNED_TEXT", html_text, False)
     if re.search(r'\bсбу\b', low):
@@ -935,7 +935,7 @@ def parse_pixel_url(url):
             site = urlparsed.netloc
         else:
             site = urlparsed.path.replace('/', '')
-        if '.fun' in site and len(urlparsed.fragment) != 0:
+        if len(urlparsed.fragment) != 0:
             canvas = urlparsed.fragment.split(',')[0]
             x = int(urlparsed.fragment.split(',')[1])
             y = int(urlparsed.fragment.split(',')[2])
@@ -1212,7 +1212,7 @@ def job_hour():
         green_colors = [new_color(color, (0, 255, 0)) for color in colors]
         blue_colors = [new_color(color, (0, 0, 255)) for color in colors]
         red_colors = [new_color(color, (255, 0, 0)) for color in colors]
-        faded_colors = [change_brightness(color, 0.6) for color in colors]
+        faded_colors = [change_brightness(color, 0.5) for color in colors]
 
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(

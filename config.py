@@ -11,3 +11,4 @@ COORDINATION_TOPIC = [18, 19]
 TOKEN = os.environ['BOT_TOKEN']
 APP_URL = f'https://pixel-bot-5lns.onrender.com/{TOKEN}'
 DB_CHATS = [SERVICE_CHATID, MAIN_CHATID]
+SITES_VIA_PROXY = ['pixelplanet.fun', 'pixuniverse.xyz', 'pixuniverse.fun']
