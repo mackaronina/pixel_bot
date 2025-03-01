@@ -170,24 +170,23 @@ def link(canvas_char, url, x, y, zoom):
     return f'<a href="https://{url}/#{canvas_char},{x},{y},{zoom}">{x},{y}</a>'
 
 
-async def fetch_via_proxy(url):
-    async with requests.AsyncSession() as session:
-        endpoint = url.split('pixelplanet.fun')[1]
-        l = "https://proxypal.net"
-        resp = await session.get(l, impersonate="chrome110")
-        soup = BeautifulSoup(resp.text, 'lxml')
-        token = soup.find('input', {'name': '_token'})['value']
-        l = "https://proxypal.net/proxy"
-        resp = await session.post(l, data={'_token': token, 'url': f'http://pixelplanet.fun{endpoint}'},
-                                  impersonate="chrome110")
-        r = parse_qs(urlparse(resp.url).query)['r'][0]
-        cpo = r[:30][:-1] + 'g'
-        if '&' in endpoint:
-            l = f"https://azureserv.com{endpoint}&__cpo={cpo}"
-        else:
-            l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
-        resp = await session.get(l, impersonate="chrome110")
-        return resp
+async def fetch_via_proxy(url, session=requests.AsyncSession()):
+    endpoint = url.split('pixelplanet.fun')[1]
+    l = "https://proxypal.net"
+    resp = await session.get(l, impersonate="chrome110")
+    soup = BeautifulSoup(resp.text, 'lxml')
+    token = soup.find('input', {'name': '_token'})['value']
+    l = "https://proxypal.net/proxy"
+    resp = await session.post(l, data={'_token': token, 'url': f'http://pixelplanet.fun{endpoint}'},
+                              impersonate="chrome110")
+    r = parse_qs(urlparse(resp.url).query)['r'][0]
+    cpo = r[:30][:-1] + 'g'
+    if '&' in endpoint:
+        l = f"https://azureserv.com{endpoint}&__cpo={cpo}"
+    else:
+        l = f"https://azureserv.com{endpoint}?__cpo={cpo}"
+    resp = await session.get(l, impersonate="chrome110")
+    return resp
 
 
 def fetch_me(url, canvas_char="d"):
@@ -262,7 +261,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, st
     for attempts in range(5):
         try:
             if 'pixelplanet' in url:
-                rsp = await fetch_via_proxy(url)
+                rsp = await fetch_via_proxy(url, sess)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
             if rsp.status_code != 200:
@@ -394,7 +393,7 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
     for attempts in range(5):
         try:
             if 'pixelplanet' in url:
-                rsp = await fetch_via_proxy(url)
+                rsp = await fetch_via_proxy(url, sess)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
             if rsp.status_code != 200:
@@ -1266,7 +1265,7 @@ def job_hour():
         is_running = False
 
 
-if __name__ == '__main__':
+def main():
     bot.send_message(ME, "ok")
     scheduler1 = schedule.Scheduler()
     scheduler1.every(60).minutes.do(job_hour)
@@ -1283,3 +1282,7 @@ if __name__ == '__main__':
     except Exception as e:
         ExHandler().handle(e)
     app.run(host='0.0.0.0', port=80, threaded=True)
+
+
+if __name__ == '__main__':
+    main()
