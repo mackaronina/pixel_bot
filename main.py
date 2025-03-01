@@ -170,7 +170,7 @@ def link(canvas_char, url, x, y, zoom):
     return f'<a href="https://{url}/#{canvas_char},{x},{y},{zoom}">{x},{y}</a>'
 
 
-async def fetch_via_proxy(url, session=requests.AsyncSession()):
+async def fetch_via_proxy(url, session):
     endpoint = url.split('pixelplanet.fun')[1]
     l = "https://proxypal.net"
     resp = await session.get(l, impersonate="chrome110")
@@ -189,16 +189,16 @@ async def fetch_via_proxy(url, session=requests.AsyncSession()):
     return resp
 
 
-def fetch_me(url, canvas_char="d"):
+async def fetch_me(url, canvas_char="d"):
     url = f"http://{url}/api/me"
     data = None
-    with requests.Session() as session:
+    async with requests.AsyncSession() as session:
         for attempts in range(5):
             try:
                 if 'pixelplanet' in url:
-                    resp = asyncio.run(fetch_via_proxy(url))
+                    resp = await fetch_via_proxy(url, session)
                 else:
-                    resp = session.get(url, impersonate="chrome110")
+                    resp = await session.get(url, impersonate="chrome110")
                 data = resp.json()
                 break
             except Exception as e:
@@ -215,15 +215,15 @@ def fetch_me(url, canvas_char="d"):
         raise Exception("Canvas not found")
 
 
-def fetch_ranking(url):
+async def fetch_ranking(url):
     url = f"http://{url}/ranking"
-    with requests.Session() as session:
+    async with requests.AsyncSession() as session:
         for attempts in range(5):
             try:
                 if 'pixelplanet' in url:
-                    resp = asyncio.run(fetch_via_proxy(url))
+                    resp = await fetch_via_proxy(url, session)
                 else:
-                    resp = session.get(url, impersonate="chrome110")
+                    resp = await session.get(url, impersonate="chrome110")
                 data = resp.json()
                 if "pixelya" in url:
                     return data["dailyCorRanking"]
@@ -234,15 +234,15 @@ def fetch_ranking(url):
         raise Exception("Rankings failed")
 
 
-def fetch_channel(url, channel_id):
+async def fetch_channel(url, channel_id):
     url = f"http://{url}/api/chathistory?cid={channel_id}&limit=50"
-    with requests.Session() as session:
+    async with requests.AsyncSession() as session:
         for attempts in range(5):
             try:
                 if 'pixelplanet' in url:
-                    resp = asyncio.run(fetch_via_proxy(url))
+                    resp = await fetch_via_proxy(url, session)
                 else:
-                    resp = session.get(url, impersonate="chrome110")
+                    resp = await session.get(url, impersonate="chrome110")
                 data = resp.json()
                 return data["history"]
             except:
@@ -699,7 +699,7 @@ def msg_site(message):
         return
     bot.reply_to(message, "Перевірка з'єднання з сайтом...")
     try:
-        fetch_me(args[0])
+        asyncio.run(fetch_me(args[0]))
     except:
         bot.reply_to(message, "Не вдалось за'єднатись, сосі")
         return
@@ -819,7 +819,7 @@ def msg_text(message):
 def get_area_image(center_x, center_y, site, canvas_char):
     x = center_x - 200
     y = center_y - 150
-    canvas, _ = fetch_me(site, canvas_char)
+    canvas, _ = asyncio.run(fetch_me(site, canvas_char))
     colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
     img = asyncio.run(get_area_small(canvas["id"], canvas["size"], x, y, 400, 300, colors, site))
     img = PIL.Image.fromarray(img)
@@ -981,7 +981,7 @@ def updater(scheduler):
 def job_day():
     try:
         url = get_config_value("URL")
-        ranking = fetch_ranking(url)
+        ranking = asyncio.run(fetch_ranking(url))
         first = None
         for i, country in enumerate(ranking):
             if country["cc"] == "ua":
@@ -1094,8 +1094,8 @@ def job_minute():
         shablon_y = int(get_config_value("Y"))
         w = int(get_config_value("WIDTH"))
         h = int(get_config_value("HEIGHT"))
-        canvas, channel_id = fetch_me(url, canvas_char)
-        history = fetch_channel(url, channel_id)
+        canvas, channel_id = asyncio.run(fetch_me(url, canvas_char))
+        history = asyncio.run(fetch_channel(url, channel_id))
         for msg in history:
             if 'pixelya' in url:
                 msg_time = msg[9]
@@ -1132,7 +1132,7 @@ def shablon_crop():
     y += box[1]
 
     img = np.array(img, dtype=np.uint8)
-    canvas, _ = fetch_me(url, canvas_char)
+    canvas, _ = asyncio.run(fetch_me(url, canvas_char))
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     transparent_color = np.array([1, 1, 1, 0], dtype=np.uint8)
     img = np.apply_along_axis(lambda pix: convert_color(pix, colors, transparent_color), 2, img)
@@ -1204,7 +1204,7 @@ def job_hour():
             pixel_marker = get_numpy(marker_file, shablon_h * shablon_w, (shablon_h, shablon_w))
             use_marker = True
 
-        canvas, _ = fetch_me(url, canvas_char)
+        canvas, _ = asyncio.run(fetch_me(url, canvas_char))
 
         colors = [np.array(color, dtype=np.uint8) for color in canvas["colors"]]
         green_colors = [new_color(color, (0, 255, 0)) for color in colors]
