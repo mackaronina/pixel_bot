@@ -53,9 +53,7 @@ bot.remove_webhook()
 bot.set_webhook(url=APP_URL, allowed_updates=['message', 'callback_query', 'chat_member', 'message_reaction',
                                               'message_reaction_count'])
 
-cursor = create_engine(
-    f'postgresql://postgres.hdahfrunlvoethhwinnc:gT77Av9pQ8IjleU2@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
-    pool_recycle=280)
+cursor = create_engine(DB_URL, pool_recycle=280)
 
 
 def get_config_value(key):
