@@ -151,7 +151,7 @@ def check_in(array_to_check, list_np_arrays):
     return False
 
 
-def change_brightness(color, brightness=0.5):
+def change_brightness(color, brightness=0.6):
     hsv = colorsys.rgb_to_hsv(int(color[0]) / 255, int(color[1]) / 255, int(color[2]) / 255)
     r, g, b = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2] * brightness)
     return np.array([round(r * 255), round(g * 255), round(b * 255)], dtype=np.uint8)
@@ -979,11 +979,12 @@ def get_shablon_info():
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     pic_hash = get_config_value("SHABLON_FILE")
-    points = points_from_pin()
     if get_country_from_ip(ip_addr) == 'RU':
         text = 'Русня'
+        points = []
     else:
         text = pin_to_html()
+        points = points_from_pin()
     return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
 
 
@@ -1225,7 +1226,7 @@ def job_hour():
         green_colors = [new_color(color, (0, 255, 0)) for color in colors]
         blue_colors = [new_color(color, (0, 255, 255)) for color in colors]
         red_colors = [new_color(color, (255, 0, 0)) for color in colors]
-        faded_colors = [change_brightness(color, 0.5) for color in colors]
+        faded_colors = [change_brightness(color, 0.6) for color in colors]
 
         updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
