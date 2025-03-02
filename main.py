@@ -963,14 +963,14 @@ def points_from_pin():
 
 
 def get_country_from_ip(address):
-    for i in range(5):
-        try:
-            resp = requests.get(f"https://geolocation-db.com/json/{address}&position=true", impersonate="chrome110")
-            if resp.status_code != 200:
-                raise Exception('No ip data')
-            return resp.json()['country_code']
-        except Exception as e:
-            ExHandler().handle(e)
+    try:
+        resp = requests.get(f"https://geolocation-db.com/json/{address}&position=true", impersonate="chrome110",
+                            timeout=5)
+        if resp.status_code != 200:
+            raise Exception('No ip data')
+        return resp.json()['country_code']
+    except:
+        return 'None'
 
 
 @app.route('/shablon_info')
