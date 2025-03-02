@@ -962,13 +962,28 @@ def points_from_pin():
     return points
 
 
+def get_country_from_ip(address):
+    for i in range(5):
+        try:
+            resp = requests.get(f"https://geolocation-db.com/json/{address}&position=true", impersonate="chrome110")
+            if resp.status_code != 200:
+                raise Exception('No ip data')
+            return resp.json()['country_code']
+        except Exception as e:
+            ExHandler().handle(e)
+
+
 @app.route('/shablon_info')
 def get_shablon_info():
+    ip_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
     pic_hash = get_config_value("SHABLON_FILE")
     points = points_from_pin()
-    text = pin_to_html()
+    if get_country_from_ip(ip_addr) == 'RU':
+        text = 'Русня'
+    else:
+        text = pin_to_html()
     return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
 
 
