@@ -1141,7 +1141,7 @@ def shablon_crop():
     file = get_config_value("SHABLON_FILE")
     url = get_config_value("URL")
     canvas_char = get_config_value("CANVAS")
-    img = get_pil(file)
+    img = get_pil(file).convert('RGBA')
     box = img.getbbox()
     img = img.crop(box)
     x += box[0]
