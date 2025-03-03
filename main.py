@@ -1148,6 +1148,7 @@ def shablon_crop():
     y += box[1]
 
     img = np.array(img, dtype=np.uint8)
+    bot.send_message(ME, str(img.shape))
     canvas, _ = asyncio.run(fetch_me(url, canvas_char))
     colors = [np.array([color[0], color[1], color[2], 255], dtype=np.uint8) for color in canvas["colors"]]
     transparent_color = np.array([1, 1, 1, 0], dtype=np.uint8)
