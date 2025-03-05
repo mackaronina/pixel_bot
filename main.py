@@ -1030,7 +1030,7 @@ def calc_score(chunk):
 def get_hot_point():
     if len(chunks_info) == 0:
         return None
-    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 100]
+    chunks_copy = [chunk.copy() for chunk in chunks_info if chunk["change"] > 200]
     if len(chunks_copy) == 0:
         return None
     return sorted(chunks_copy, key=lambda chunk: calc_score(chunk), reverse=True)[0]
