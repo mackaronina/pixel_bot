@@ -264,7 +264,11 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, st
                 rsp = await fetch_via_proxy(url, sess)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
-            if rsp.status_code != 200:
+            if rsp.status_code == 200:
+                data = rsp.content
+            elif rsp.status_code == 404:
+                data = bytes(65536)
+            else:
                 raise Exception(f"No data {rsp.status_code}")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
@@ -396,7 +400,11 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                 rsp = await fetch_via_proxy(url, sess)
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
-            if rsp.status_code != 200:
+            if rsp.status_code == 200:
+                data = rsp.content
+            elif rsp.status_code == 404:
+                data = bytes(65536)
+            else:
                 raise Exception(f"No data {rsp.status_code}")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
