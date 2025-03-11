@@ -181,8 +181,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-PY-243.23654.177" />
-        <option value="bundled-python-sdk-91d3a02ef49d-43b77aa2d136-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.23654.177" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-PY-243.25659.43" />
+        <option value="bundled-python-sdk-181015f7ab06-4df51de95216-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.25659.43" />
       </set>
     </attachedChunks>
   </component>
@@ -420,15 +420,9 @@
       <workItem from="1741009404793" duration="412000" />
       <workItem from="1741010196419" duration="1257000" />
       <workItem from="1741107314109" duration="474000" />
-      <workItem from="1741138776612" duration="57000" />
-    </task>
-    <task id="LOCAL-00056" summary="Some commit">
-      <option name="closed" value="true" />
-      <created>1739711350003</created>
-      <option name="number" value="00056" />
-      <option name="presentableId" value="LOCAL-00056" />
-      <option name="project" value="LOCAL" />
-      <updated>1739711350003</updated>
+      <workItem from="1741138776612" duration="129000" />
+      <workItem from="1741162931078" duration="48000" />
+      <workItem from="1741656200252" duration="154000" />
     </task>
     <task id="LOCAL-00057" summary="Some commit">
       <option name="closed" value="true" />
@@ -814,7 +808,15 @@
       <option name="project" value="LOCAL" />
       <updated>1741011459923</updated>
     </task>
-    <option name="localTasksCounter" value="105" />
+    <task id="LOCAL-00105" summary="Some commit">
+      <option name="closed" value="true" />
+      <created>1741138854367</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
+      <option name="project" value="LOCAL" />
+      <updated>1741138854367</updated>
+    </task>
+    <option name="localTasksCounter" value="106" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

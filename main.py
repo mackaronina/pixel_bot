@@ -265,7 +265,7 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, st
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
             if rsp.status_code != 200:
-                raise Exception("No data")
+                raise Exception(f"No data {rsp.status_code}")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
@@ -397,7 +397,7 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
             else:
                 rsp = await sess.get(url, impersonate="chrome110")
             if rsp.status_code != 200:
-                raise Exception("No data")
+                raise Exception(f"No data {rsp.status_code}")
             data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
