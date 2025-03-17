@@ -116,7 +116,6 @@ def get_medal_users():
 
 
 def update_medal_user(user_id, name, medal_list):
-    medal_list = [html.escape(medal, quote=True) for medal in medal_list]
     name = html.escape(name, quote=True)
     cursor.execute(
         f"UPDATE medals SET name = %s, medal_list = %s WHERE id = {user_id}", name,
@@ -124,7 +123,6 @@ def update_medal_user(user_id, name, medal_list):
 
 
 def create_medal_user(user_id, name, medal_list):
-    medal_list = [html.escape(medal, quote=True) for medal in medal_list]
     name = html.escape(name, quote=True)
     cursor.execute(
         f"INSERT INTO medals (id, name, medal_list) VALUES ({user_id}, %s, %s)", name,
@@ -602,21 +600,21 @@ def msg_top(message):
 
 
 def calc_medals(medal_list):
-    res = {}
+    res = []
     data = get_medal_users()
     # count_users = len([user for user in data if len(user['medal_list']) > 0])
     all_medals = []
     for user in data:
-        all_medals += [m.lower() for m in user['medal_list']]
+        all_medals += [m['name'].lower() for m in user['medal_list']]
     for medal in medal_list:
-        koef = all_medals.count(medal.lower())
+        koef = all_medals.count(medal['name'].lower())
         if koef <= 2:
             icon = '🥇'
         elif koef <= 7:
             icon = '🥈'
         else:
             icon = '🥉'
-        res[medal] = icon
+        res.append((medal, icon))
     return res
 
 
@@ -635,8 +633,8 @@ def msg_medal(message):
             text = "У цього лоха нема медалей"
     else:
         text = f"<b>Всього медалей у {user['name']}:  {len(user['medal_list'])} 🎖</b>\n\n"
-        for medal, icon in calc_medals(user['medal_list']).items():
-            text += f'{icon}  {medal}\n'
+        for medal, icon in calc_medals(user['medal_list']):
+            text += f'{icon}  {medal['name']} <i>{medal['date']}</i>\n'
     bot.reply_to(message, text)
 
 
@@ -650,15 +648,17 @@ def msg_medal_plus(message):
         bot.reply_to(message,
                      "Формат команди: /mplus [назва медалі]\nЦією командою можна видати медаль відповіддю на повідомлення людини, яка цю медаль отримає\nПриклади:\n/mplus За взяття хуя за щоку")
         return
+    date = datetime.fromtimestamp(time.time() + TIMESTAMP).date().strftime("%d.%m.%Y")
+    medal = {'name': html.escape(medal_name, quote=True), 'date': date}
     user_id = message.reply_to_message.from_user.id
     user = get_medal_user(user_id)
     if user is None:
-        create_medal_user(user_id, message.reply_to_message.from_user.full_name, [medal_name])
+        create_medal_user(user_id, message.reply_to_message.from_user.full_name, [medal])
     else:
-        if medal_name.lower() in [m.lower() for m in user['medal_list']]:
+        if medal_name.lower() in [m['name'].lower() for m in user['medal_list']]:
             bot.reply_to(message, 'У нього вже є така медаль, сосі')
             return
-        user['medal_list'].append(medal_name)
+        user['medal_list'].append(medal)
         update_medal_user(user_id, message.reply_to_message.from_user.full_name, user['medal_list'])
     bot.reply_to(message, "Медаль видано")
 
@@ -678,7 +678,7 @@ def msg_medal_minus(message):
     if user is None:
         bot.reply_to(message, 'У нього нема медалей, сосі')
         return
-    new_list = [m.lower() for m in user['medal_list']]
+    new_list = [m['name'].lower() for m in user['medal_list']]
     new_name = medal_name.lower()
     if new_name not in new_list:
         bot.reply_to(message, 'У нього нема такої медалі, сосі')
