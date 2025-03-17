@@ -514,6 +514,7 @@ def to_matrix(l, n):
 
 
 def generate_telegraph():
+    global telegraph_url
     text = "<p><h4>Сортування за кількістю пікселів:</h4>"
     text += generate_coords_text_telegraph("diff")
     text += "<h4>Сортування за зміною пікселів:</h4>"
@@ -527,7 +528,7 @@ def generate_telegraph():
                 'Список всіх координат',
                 html_content=text
             )
-            return response['url']
+            telegraph_url = response['url']
         except:
             time.sleep(1)
 
@@ -799,13 +800,12 @@ def msg_shablon_info(message):
 def msg_coords_info(message):
     text, is_empty = generate_coords_text("diff")
     if not is_empty:
-        if telegraph_url is not None:
-            keyboard = types.InlineKeyboardMarkup(row_width=1)
-            callback_button = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
-            keyboard.add(callback_button)
-            bot.reply_to(message, text, reply_markup=keyboard)
-        else:
-            bot.reply_to(message, text)
+        if telegraph_url is None:
+            generate_telegraph()
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        callback_button = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
+        keyboard.add(callback_button)
+        bot.reply_to(message, text, reply_markup=keyboard)
     else:
         bot.reply_to(message, text)
 
@@ -1163,12 +1163,11 @@ def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None, mess
 
 
 def job_hour():
-    global is_running, telegraph_url
+    global is_running
     try:
         if is_running:
             return
         is_running = True
-        telegraph_url = None
         shablon_crop()
         url = get_config_value("URL")
         x = int(get_config_value("X"))
@@ -1242,7 +1241,7 @@ def job_hour():
                             message_thread_id=GENERAL_TOPIC)
         if text2 is not None:
             bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
-        telegraph_url = generate_telegraph()
+        generate_telegraph()
 
         save_data(pixel_marker)
     except Exception as e:
