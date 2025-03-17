@@ -31,7 +31,6 @@ is_running = False
 chunks_info = []
 blocked_messages = []
 processed_messages = []
-updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
 telegraph_url = None
 
 
@@ -67,9 +66,7 @@ def get_config_value(key):
 def set_config_value(key, value, clear=True):
     cursor.execute(f"UPDATE key_value SET value = %s WHERE key = %s", str(value), key)
     if clear and len(chunks_info) > 0:
-        chunks_info.clear()
-        save_chunks_info()
-        clear_value("MARKER_FILE")
+        clear_data()
 
 
 def clear_value(key):
@@ -83,15 +80,20 @@ def load_chunks_info():
         chunks_info = json.loads(info)
 
 
-def save_chunks_info():
+def clear_data():
+    chunks_info.clear()
     set_config_value("CHUNKS_INFO", json.dumps(chunks_info, ensure_ascii=False), False)
+    clear_value("CHECKED_TIME")
+    clear_value("MARKER_FILE")
 
 
-def save_pixel_marker(pixel_marker):
+def save_data(pixel_marker):
     m = send_document_retry(SERVICE_CHATID, pixel_marker, as_bin=True)
     del pixel_marker
     fil = m.document.file_id
     set_config_value("MARKER_FILE", fil, False)
+    set_config_value("CHUNKS_INFO", json.dumps(chunks_info, ensure_ascii=False), False)
+    set_config_value('CHECKED_TIME', time.time() + TIMESTAMP, False)
 
 
 def get_medal_user(user_id):
@@ -546,6 +548,7 @@ def generate_keyboard(sort_type, idk):
 
 def generate_coords_text(sort_by):
     is_empty = False
+    checked_time = get_config_value("CHECKED_TIME")
     if len(chunks_info) == 0:
         text = "Нічого не знайдено, сосі"
         is_empty = True
@@ -557,7 +560,9 @@ def generate_coords_text(sort_by):
             is_empty = True
         else:
             if not is_running:
-                text = f"Дані оновлено о {format_time(updated_at.hour)}:{format_time(updated_at.minute)}"
+                text = f"Дані оновлено"
+                if checked_time is not None:
+                    text += f" о {datetime.fromtimestamp(int(checked_time)).strftime('%H:%M')}"
             else:
                 text = f"Дані в процесі оновлення"
             text += "\nЗа цими координатами знайдено пікселі не по шаблону:\n\n№ | Координати | Пікселі | Зміна"
@@ -1205,7 +1210,7 @@ def send_photo_retry(chatid, photo, caption=None, reply_to_message_id=None, mess
 
 
 def job_hour():
-    global is_running, updated_at, telegraph_url
+    global is_running, telegraph_url
     try:
         if is_running:
             return
@@ -1218,6 +1223,7 @@ def job_hour():
         file = get_config_value("SHABLON_FILE")
         marker_file = get_config_value("MARKER_FILE")
         canvas_char = get_config_value("CANVAS")
+        checked_time = get_config_value("CHECKED_TIME")
         img = np.array(get_pil(file).convert('RGB'), dtype=np.uint8)
         shablon_w = img.shape[1]
         shablon_h = img.shape[0]
@@ -1237,7 +1243,6 @@ def job_hour():
         red_colors = [new_color(color, (255, 0, 0)) for color in colors]
         faded_colors = [change_brightness(color, 0.6) for color in colors]
 
-        updated_at = datetime.fromtimestamp(time.time() + 2 * 3600)
         result = asyncio.run(
             get_area(canvas["id"], canvas["size"], x, y, shablon_w, shablon_h, url, img, canvas_char, green_colors,
                      blue_colors, red_colors, faded_colors, colors, pixel_marker, use_marker))
@@ -1250,7 +1255,11 @@ def job_hour():
         bot.send_message(ME, 'abba2')
         text = f"На {url} Україна співпадає з шаблоном на <b>{to_fixed(perc * 100, 2)} %</b>\nПікселів не за шаблоном: <b>{diff}</b>"
         if change != 0:
-            text += f" <b>({format_change(change)})</b>"
+            text += f" <b>({format_change(change)}"
+            if checked_time is not None:
+                minutes = round((time.time() + TIMESTAMP - int(checked_time)) / 60)
+                text += f" за {minutes} хв"
+            text += ")</b>"
         text2 = None
 
         sorted_chunks = [chunk for chunk in chunks_info if chunk["change"] > 0]
@@ -1282,8 +1291,7 @@ def job_hour():
             bot.send_message(MAIN_CHATID, text2, message_thread_id=GENERAL_TOPIC)
         telegraph_url = generate_telegraph()
 
-        save_chunks_info()
-        save_pixel_marker(pixel_marker)
+        save_data(pixel_marker)
     except Exception as e:
         ExHandler().handle(e)
     finally:
