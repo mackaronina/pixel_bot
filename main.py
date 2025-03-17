@@ -634,7 +634,7 @@ def msg_medal(message):
     else:
         text = f"<b>Всього медалей у {user['name']}:  {len(user['medal_list'])} 🎖</b>\n\n"
         for medal, icon in calc_medals(user['medal_list']):
-            text += f'{icon}  {medal['name']} <i>{medal['date']}</i>\n'
+            text += f"{icon}  {medal['name']} <i>{medal['date']}</i>\n"
     bot.reply_to(message, text)
 
 
