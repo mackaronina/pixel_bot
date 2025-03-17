@@ -29,7 +29,6 @@ from config import *
 is_running = False
 
 chunks_info = []
-blocked_messages = []
 processed_messages = []
 telegraph_url = None
 
@@ -93,7 +92,7 @@ def save_data(pixel_marker):
     fil = m.document.file_id
     set_config_value("MARKER_FILE", fil, False)
     set_config_value("CHUNKS_INFO", json.dumps(chunks_info, ensure_ascii=False), False)
-    set_config_value('CHECKED_TIME', time.time() + TIMESTAMP, False)
+    set_config_value('CHECKED_TIME', int(time.time() + TIMESTAMP), False)
 
 
 def get_medal_user(user_id):
@@ -270,7 +269,6 @@ async def fetch(sess, canvas_id, canvasoffset, ix, iy, base_url, result, img, st
                 data = bytes(65536)
             else:
                 raise Exception(f"No data {rsp.status_code}")
-            data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
@@ -406,7 +404,6 @@ async def fetch_small(sess, canvas_id, canvasoffset, ix, iy, colors, base_url, i
                 data = bytes(65536)
             else:
                 raise Exception(f"No data {rsp.status_code}")
-            data = rsp.content
             offset = int(-canvasoffset * canvasoffset / 2)
             off_x = ix * 256 + offset
             off_y = iy * 256 + offset
@@ -533,17 +530,6 @@ def generate_telegraph():
             return response['url']
         except:
             time.sleep(1)
-
-
-def generate_keyboard(sort_type, idk):
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
-    callback_button = types.InlineKeyboardButton(text='Сортування', callback_data=f'sort {idk} {sort_type}')
-    if telegraph_url is not None:
-        callback_button2 = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
-        keyboard.add(callback_button, callback_button2)
-    else:
-        keyboard.add(callback_button)
-    return keyboard
 
 
 def generate_coords_text(sort_by):
@@ -813,8 +799,13 @@ def msg_shablon_info(message):
 def msg_coords_info(message):
     text, is_empty = generate_coords_text("diff")
     if not is_empty:
-        keyboard = generate_keyboard("change", message.from_user.id)
-        bot.reply_to(message, text, reply_markup=keyboard)
+        if telegraph_url is not None:
+            keyboard = types.InlineKeyboardMarkup(row_width=1)
+            callback_button = types.InlineKeyboardButton(text='Всі точки', url=telegraph_url)
+            keyboard.add(callback_button)
+            bot.reply_to(message, text, reply_markup=keyboard)
+        else:
+            bot.reply_to(message, text)
     else:
         bot.reply_to(message, text)
 
@@ -863,43 +854,6 @@ def msg_chat(upd):
     if upd.new_chat_member.status == "member" and upd.old_chat_member.status == "left":
         bot.send_animation(upd.chat.id,
                            'CgACAgQAAyEFAASBdOsgAAIV-Wc0pgq0nWuUz2g9vOV_U8qwONWbAAK9BQAC3_skU_chjKqyZotRNgQ')
-
-
-def callback_process(call):
-    args = call.data.split()
-    cmd = args[0]
-    idk = int(args[1])
-    if call.from_user.id != idk and idk != ANONIM:
-        answer_callback_query(call, "Це повідомлення не для тебе")
-        return
-    if cmd == "sort":
-        type_sort = args[2]
-        text, is_empty = generate_coords_text(type_sort)
-        answer_callback_query(call, "Ок чекай")
-        time.sleep(1)
-        if not is_empty:
-            if type_sort == "diff":
-                new_sort = "change"
-            else:
-                new_sort = "diff"
-            keyboard = generate_keyboard(new_sort, idk)
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
-                                  reply_markup=keyboard)
-        else:
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_get(call):
-    key = f'{call.message.chat.id} {call.message.message_id}'
-    if key in blocked_messages:
-        answer_callback_query(call, "Почекай")
-        return
-    blocked_messages.append(key)
-    try:
-        callback_process(call)
-    finally:
-        blocked_messages.remove(key)
 
 
 @app.route('/' + TOKEN, methods=['POST'])
@@ -1081,7 +1035,7 @@ def check_rollback(msg_txt, site, cropped, canvas_char, shablon_x, shablon_y, w,
     send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=GENERAL_TOPIC)
 
 
-def check_void(msg_txt, canvas_char, url, ping_users):
+def check_void(msg_txt, canvas_char, url):
     if "successfully defeated" not in msg_txt:
         return
     text = f"<b>Почалося знижене кд на {url}, гойда!</b>"
@@ -1096,12 +1050,12 @@ def check_void(msg_txt, canvas_char, url, ping_users):
         text += f"\n\nНайгарячіша точка: {chunk['pixel_link']}"
         img = get_area_image(chunk['pixel_coords'][0], chunk['pixel_coords'][1], url, canvas_char)
     text += "\n\nОтримай актуальний шаблон командою /shablon"
-    ping_list = to_matrix(ping_users, 5)
     if img is not None:
-        m = send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=VOID_TOPIC)
+        send_photo_retry(MAIN_CHATID, img, caption=text, message_thread_id=VOID_TOPIC)
     else:
-        m = bot.send_message(MAIN_CHATID, text, message_thread_id=VOID_TOPIC)
+        bot.send_message(MAIN_CHATID, text, message_thread_id=VOID_TOPIC)
     """
+    ping_list = to_matrix(ping_users, 5)
     for ping_five in ping_list:
         txt = ''
         for user in ping_five:
@@ -1116,7 +1070,6 @@ def job_minute():
         while len(processed_messages) > 100:
             processed_messages.pop(0)
         url = get_config_value("URL")
-        ping_users = json.loads(get_config_value("PING_USERS"))
         canvas_char = get_config_value("CANVAS")
         cropped = eval(get_config_value("CROPPED"))
         shablon_x = int(get_config_value("X"))
@@ -1138,7 +1091,7 @@ def job_minute():
                 continue
             processed_messages.append(msg_time)
             if msg_sender == "event":
-                check_void(msg_txt, canvas_char, url, ping_users)
+                check_void(msg_txt, canvas_char, url)
             elif msg_sender == "info":
                 check_rollback(msg_txt, url, cropped, canvas_char, shablon_x, shablon_y, w, h)
     except Exception as e:
