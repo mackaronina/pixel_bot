@@ -17,8 +17,8 @@ import pycountry
 import schedule
 import telebot
 from bs4 import BeautifulSoup
-from curl_cffi import requests
-from flask import Flask, request, send_file, jsonify
+from curl_cffi import requests, CurlMime
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from telebot import apihelper, types
@@ -869,17 +869,6 @@ def get_ok():
     return 'ok', 200
 
 
-@app.route('/shablon_picture')
-def get_shablon_pictrue():
-    file = get_config_value("SHABLON_FILE")
-    file_info = bot.get_file(file)
-    downloaded_file = bot.download_file(file_info.file_path)
-    bio = BytesIO(downloaded_file)
-    bio.name = f'result.png'
-    bio.seek(0, 0)
-    return send_file(bio, mimetype='image/png', as_attachment=True, download_name=bio.name)
-
-
 def pin_to_html():
     text = get_config_value("PINNED_TEXT")
     if text is None:
@@ -929,6 +918,7 @@ def points_from_pin():
     return points
 
 
+'''
 def get_country_from_ip(address):
     try:
         resp = requests.get(f"https://geolocation-db.com/json/{address}&position=true", impersonate="chrome110",
@@ -938,21 +928,39 @@ def get_country_from_ip(address):
         return resp.json()['country_code']
     except:
         return 'None'
+'''
+
+
+def upload_to_imgur(img):
+    for attempts in range(10):
+        try:
+            bio = send_pil(img)
+            mp = CurlMime()
+            mp.addpart(
+                name="image",
+                content_type="image/png",
+                filename="result.png",
+                data=bio.getvalue()
+            )
+            with requests.Session() as s:
+                p = s.post('https://api.imgbb.com/1/upload?key=3100ff6a118529e2ca934359de29fd46', multipart=mp,
+                           impersonate="chrome110")
+            return p.json()['data']['url']
+        except Exception as e:
+            ExHandler().handle(e)
+            time.sleep(1)
+    return ''
 
 
 @app.route('/shablon_info')
 def get_shablon_info():
-    ip_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    # ip_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
     x = int(get_config_value("X"))
     y = int(get_config_value("Y"))
-    pic_hash = get_config_value("SHABLON_FILE")
-    if get_country_from_ip(ip_addr) == 'RU':
-        text = 'Русня'
-        points = []
-    else:
-        text = pin_to_html()
-        points = points_from_pin()
-    return jsonify({"x": x, "y": y, "text": text, "pic_hash": pic_hash, "points": points})
+    pic_link = get_config_value("PICTURE_LINK")
+    text = pin_to_html()
+    points = points_from_pin()
+    return jsonify({"x": x, "y": y, "text": text, "pic_link": pic_link, "points": points})
 
 
 def updater(scheduler):
@@ -1124,6 +1132,7 @@ def shablon_crop():
     width, height = pil_img.size
     m = send_document_retry(SERVICE_CHATID, pil_img)
     fil = m.document.file_id
+    set_config_value("PICTURE_LINK", upload_to_imgur(pil_img))
     set_config_value("X", x)
     set_config_value("Y", y)
     set_config_value("SHABLON_FILE", fil)
