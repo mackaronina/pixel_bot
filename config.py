@@ -9,6 +9,6 @@ VOID_TOPIC = 2815
 COORDINATION_TOPIC = [127, 123]
 TOKEN = os.environ['BOT_TOKEN']
 DB_URL = os.environ['DB_URL']
-APP_URL = f'https://pixel-bot-2.onrender.com/{TOKEN}'
+APP_URL = f'https://abobapixelbot.onrender.com/{TOKEN}'
 DB_CHATS = [SERVICE_CHATID, MAIN_CHATID]
 TIMESTAMP = 2 * 3600
