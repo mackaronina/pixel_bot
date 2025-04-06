@@ -1264,7 +1264,7 @@ def main():
     scheduler1 = schedule.Scheduler()
     scheduler1.every(60).minutes.do(job_hour)
     scheduler2 = schedule.Scheduler()
-    scheduler2.every().day.at("23:00").do(job_day)
+    scheduler2.every().day.at("22:00").do(job_day)
     scheduler3 = schedule.Scheduler()
     scheduler3.every(1).minutes.do(job_minute)
     Thread(target=updater, args=(scheduler1,)).start()
